@@ -1,4 +1,4 @@
-import { Moon, Sun } from 'lucide-react';
+import { FileDown, Moon, Sun } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FastSpeedStage } from './components/FastSpeedStage';
 import { NetworkDiagnosticsSection } from './components/NetworkDiagnosticsSection';
@@ -13,6 +13,7 @@ import type {
   ThemeMode,
 } from './types/network';
 import { fetchNetworkDiagnostics } from './utils/networkProbe';
+import { exportNetworkReportPdf } from './utils/pdfReport';
 import { INITIAL_SPEED_METRICS, runSpeedBenchmark } from './utils/speedEngine';
 
 const HISTORY_STORAGE_KEY = 'testline_history_v1';
@@ -91,14 +92,17 @@ export default function App() {
     latestIpRef.current = network.primaryIp;
   }, [network.primaryIp]);
 
-  const applyTheme = useCallback((nextTheme: ThemeMode) => {
-    setTheme(nextTheme);
-    document.documentElement.classList.toggle('dark', nextTheme === 'dark');
-    try {
-      localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
-    } catch {
-      // Ignore storage failures
-    }
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => {
+      const nextTheme: ThemeMode = prev === 'dark' ? 'light' : 'dark';
+      document.documentElement.classList.toggle('dark', nextTheme === 'dark');
+      try {
+        localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+      } catch {
+        // Ignore storage failures
+      }
+      return nextTheme;
+    });
   }, []);
 
   const refreshNetwork = useCallback(async () => {
@@ -130,8 +134,12 @@ export default function App() {
     }
 
     if (finalResult.phase === 'complete') {
+      const entryId =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : String(Date.now());
       const entry: TestRunRecord = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        id: entryId,
         timestamp: Date.now(),
         downloadMbps: finalResult.downloadMbps,
         uploadMbps: finalResult.uploadMbps,
@@ -172,6 +180,15 @@ export default function App() {
     }
   }, []);
 
+  const handleExportPdf = useCallback(() => {
+    exportNetworkReportPdf({
+      metrics,
+      network,
+      unit,
+      history,
+    });
+  }, [metrics, network, unit, history]);
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 dark:bg-[#070B12] dark:text-slate-100">
       <TopBar phase={metrics.phase} onStartTest={startTest} onStopTest={stopTest} />
@@ -188,6 +205,7 @@ export default function App() {
             </h1>
 
             <div className="flex flex-wrap items-center gap-3 shrink-0">
+              {/* Unit Toggle */}
               <div
                 role="group"
                 aria-label="Speed unit"
@@ -217,38 +235,35 @@ export default function App() {
                 </button>
               </div>
 
-              <div
-                role="group"
-                aria-label="Color theme"
-                className="inline-flex items-center p-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A]"
+              {/* Single-Click Light / Dark Mode Toggle */}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
               >
-                <button
-                  type="button"
-                  onClick={() => applyTheme('light')}
-                  aria-pressed={theme === 'light'}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                    theme === 'light'
-                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-                  }`}
-                >
-                  <Sun className="w-3.5 h-3.5" aria-hidden="true" />
-                  <span>Light</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyTheme('dark')}
-                  aria-pressed={theme === 'dark'}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                    theme === 'dark'
-                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-                  }`}
-                >
-                  <Moon className="w-3.5 h-3.5" aria-hidden="true" />
-                  <span>Dark</span>
-                </button>
-              </div>
+                {theme === 'dark' ? (
+                  <>
+                    <Sun className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
+                    <span>Light Mode</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon className="w-3.5 h-3.5 text-slate-600" aria-hidden="true" />
+                    <span>Dark Mode</span>
+                  </>
+                )}
+              </button>
+
+              {/* Watermarked PDF Report Export */}
+              <button
+                type="button"
+                onClick={handleExportPdf}
+                className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+              >
+                <FileDown className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" aria-hidden="true" />
+                <span>Export PDF</span>
+              </button>
             </div>
           </div>
 
@@ -273,7 +288,7 @@ export default function App() {
       <footer className="border-t border-slate-200 dark:border-slate-800 py-6 mt-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
           <span>TestLine · Single-page network speed and IP diagnostics</span>
-          <span>Measurements reflect live browser-to-edge transport throughput</span>
+          <span>Measurements powered by Cloudflare speed endpoints</span>
         </div>
       </footer>
     </div>

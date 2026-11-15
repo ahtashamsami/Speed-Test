@@ -15,13 +15,9 @@ export const INITIAL_SPEED_METRICS: SpeedMetrics = {
   errorMessage: null,
 };
 
-function median(values: number[]): number {
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  if (sorted.length % 2 === 0) {
-    return (sorted[mid - 1] + sorted[mid]) / 2;
-  }
-  return sorted[mid];
+function average(values: number[]): number {
+  if (values.length === 0) return 0;
+  return values.reduce((acc, v) => acc + v, 0) / values.length;
 }
 
 function calculateJitter(values: number[]): number {
@@ -63,33 +59,31 @@ export async function runSpeedBenchmark(
 
   try {
     // -----------------------------------------------------------------------
-    // PHASE 1: Latency & Jitter (1 warmup + 12 samples)
+    // PHASE 1: Ping & Jitter (5 sequential requests to Cloudflare __down?bytes=0)
     // -----------------------------------------------------------------------
-    await fetch(`/api/speed/ping?warmup=${Date.now()}`, {
-      cache: 'no-store',
-      signal,
-    });
-
-    const pingCount = 12;
+    const pingCount = 5;
     const pingValues: number[] = [];
     const pingSamples: PingSample[] = [];
 
     for (let i = 0; i < pingCount; i++) {
       if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
       const t0 = performance.now();
-      const res = await fetch(`/api/speed/ping?i=${i}&t=${Date.now()}`, {
-        cache: 'no-store',
-        signal,
-      });
-      if (!res.ok) throw new Error(`Ping probe returned HTTP ${res.status}`);
-      await res.text();
+      const res = await fetch(
+        `https://speed.cloudflare.com/__down?bytes=0&t=${Date.now()}`,
+        {
+          cache: 'no-store',
+          signal,
+        }
+      );
+      if (!res.ok) throw new Error(`Cloudflare ping probe returned HTTP ${res.status}`);
+      await res.arrayBuffer();
       const rtt = Math.max(performance.now() - t0, 0.2);
       pingValues.push(rtt);
       pingSamples.push({ index: i + 1, rttMs: Number(rtt.toFixed(1)) });
 
       emit({
         pingSamples: [...pingSamples],
-        pingMs: Number(median(pingValues).toFixed(1)),
+        pingMs: Number(average(pingValues).toFixed(1)),
         minPingMs: Number(Math.min(...pingValues).toFixed(1)),
         jitterMs: Number(calculateJitter(pingValues).toFixed(1)),
         progressPct: Math.round(((i + 1) / pingCount) * 18),
@@ -97,14 +91,17 @@ export async function runSpeedBenchmark(
     }
 
     // -----------------------------------------------------------------------
-    // PHASE 2: Download Throughput (3 concurrent streams, ~5.5s window)
+    // PHASE 2: Download Speed (3 parallel fetch streams, 25MB chunks, 10s window)
     // -----------------------------------------------------------------------
     emit({ phase: 'download', progressPct: 20 });
 
-    const downloadDurationMs = 5500;
+    const downloadDurationMs = 10_000;
+    const downloadChunkBytes = 25_000_000;
     const downloadStartMs = performance.now();
     const downloadSamples: SpeedSample[] = [];
-    const byteTimeline: Array<{ t: number; bytes: number }> = [{ t: downloadStartMs, bytes: 0 }];
+    const byteTimeline: Array<{ t: number; bytes: number }> = [
+      { t: downloadStartMs, bytes: 0 },
+    ];
     let totalDownloadedBytes = 0;
     let peakDownload = 0;
 
@@ -118,8 +115,8 @@ export async function runSpeedBenchmark(
       const now = performance.now();
       byteTimeline.push({ t: now, bytes: totalDownloadedBytes });
 
-      // 400ms sliding window for smooth instantaneous telemetry
-      const windowCutoff = now - 400;
+      // 500ms sliding window for smooth real-time speedometer updates
+      const windowCutoff = now - 500;
       let baseline = byteTimeline[0];
       for (let idx = byteTimeline.length - 1; idx >= 0; idx--) {
         if (byteTimeline[idx].t <= windowCutoff) {
@@ -135,31 +132,31 @@ export async function runSpeedBenchmark(
       if (instMbps > peakDownload) peakDownload = instMbps;
 
       const elapsedSec = Number(((now - testStartMs) / 1000).toFixed(2));
-      const sample: SpeedSample = {
+      downloadSamples.push({
         elapsedSec,
         phase: 'download',
         mbps: Number(instMbps.toFixed(2)),
-      };
-      downloadSamples.push(sample);
+      });
 
       const phaseRatio = Math.min((now - downloadStartMs) / downloadDurationMs, 1);
       emit({
         downloadMbps: Number(instMbps.toFixed(2)),
         peakDownloadMbps: Number(peakDownload.toFixed(2)),
         samples: [...downloadSamples],
-        progressPct: 20 + Math.round(phaseRatio * 40),
+        progressPct: 20 + Math.round(phaseRatio * 45),
       });
-    }, 110);
+    }, 100);
 
-    const streamWorker = async (workerId: number) => {
-      let chunkIter = 0;
+    const streamWorker = async () => {
       while (!dlController.signal.aborted && !signal.aborted) {
         try {
           const res = await fetch(
-            `/api/speed/download?bytes=${10 * 1024 * 1024}&w=${workerId}&c=${chunkIter++}&t=${Date.now()}`,
+            `https://speed.cloudflare.com/__down?bytes=${downloadChunkBytes}&t=${Date.now()}`,
             { cache: 'no-store', signal: dlController.signal }
           );
-          if (!res.ok || !res.body) break;
+          if (!res.ok || !res.body) {
+            throw new Error(`Cloudflare download returned HTTP ${res.status}`);
+          }
           const reader = res.body.getReader();
           while (true) {
             const { done, value } = await reader.read();
@@ -174,7 +171,7 @@ export async function runSpeedBenchmark(
     };
 
     try {
-      await Promise.all([streamWorker(0), streamWorker(1), streamWorker(2)]);
+      await Promise.all([streamWorker(), streamWorker(), streamWorker()]);
     } finally {
       window.clearTimeout(dlTimer);
       window.clearInterval(sampleInterval);
@@ -183,34 +180,35 @@ export async function runSpeedBenchmark(
 
     if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 
-    // Compute sustained download speed discarding first 20% slow-start samples
+    const dlElapsedSec = Math.max((performance.now() - downloadStartMs) / 1000, 0.1);
     const dlMeasurements = downloadSamples.map((s) => s.mbps).filter((v) => v > 0);
-    const dlTrimStart = Math.floor(dlMeasurements.length * 0.2);
+    const dlTrimStart = Math.floor(dlMeasurements.length * 0.15);
     const dlSustainedSlice = dlMeasurements.slice(dlTrimStart);
     const finalDownloadMbps =
       dlSustainedSlice.length > 0
-        ? dlSustainedSlice.reduce((a, b) => a + b, 0) / dlSustainedSlice.length
-        : (totalDownloadedBytes * 8) /
-          (Math.max((performance.now() - downloadStartMs) / 1000, 0.1) * 1_000_000);
+        ? average(dlSustainedSlice)
+        : (totalDownloadedBytes * 8) / (dlElapsedSec * 1_000_000);
 
     emit({
       downloadMbps: Number(finalDownloadMbps.toFixed(2)),
       peakDownloadMbps: Number(Math.max(peakDownload, finalDownloadMbps).toFixed(2)),
-      progressPct: 60,
+      progressPct: 65,
     });
 
     // -----------------------------------------------------------------------
-    // PHASE 3: Upload Throughput (2 concurrent XHR streams, ~5s window)
+    // PHASE 3: Upload Speed (2 parallel XHR POSTs of 10MB random Uint8Array)
     // -----------------------------------------------------------------------
-    emit({ phase: 'upload', progressPct: 62 });
+    emit({ phase: 'upload', progressPct: 67 });
 
-    const uploadPayload = createRandomPayload(1024 * 1024 * 2); // 2 MiB uncompressible blob
-    const uploadDurationMs = 5000;
+    const uploadChunkBytes = 10_000_000; // 10MB random payload
+    const uploadPayload = createRandomPayload(uploadChunkBytes);
+    const uploadMaxDurationMs = 15_000;
     const uploadStartMs = performance.now();
     const uploadSamples: SpeedSample[] = [];
-    const ulTimeline: Array<{ t: number; bytes: number }> = [{ t: uploadStartMs, bytes: 0 }];
-    const activeWorkerLoaded = [0, 0];
-    let completedUploadBytes = 0;
+    const ulTimeline: Array<{ t: number; bytes: number }> = [
+      { t: uploadStartMs, bytes: 0 },
+    ];
+    const workerLoaded = [0, 0];
     let peakUpload = 0;
     let ulStopped = false;
 
@@ -228,20 +226,16 @@ export async function runSpeedBenchmark(
     };
 
     signal.addEventListener('abort', abortUpload, { once: true });
+    const ulTimeout = window.setTimeout(abortUpload, uploadMaxDurationMs);
 
-    const ulEndTimer = window.setTimeout(() => {
-      abortUpload();
-    }, uploadDurationMs);
-
-    const getTotalUploaded = () =>
-      completedUploadBytes + activeWorkerLoaded[0] + activeWorkerLoaded[1];
+    const getTotalUploaded = () => workerLoaded[0] + workerLoaded[1];
 
     const ulInterval = window.setInterval(() => {
       const now = performance.now();
       const totalBytes = getTotalUploaded();
       ulTimeline.push({ t: now, bytes: totalBytes });
 
-      const cutoff = now - 450;
+      const cutoff = now - 500;
       let baseline = ulTimeline[0];
       for (let idx = ulTimeline.length - 1; idx >= 0; idx--) {
         if (ulTimeline[idx].t <= cutoff) {
@@ -262,73 +256,69 @@ export async function runSpeedBenchmark(
         mbps: Number(instMbps.toFixed(2)),
       });
 
-      const phaseRatio = Math.min((now - uploadStartMs) / uploadDurationMs, 1);
+      const byteRatio = Math.min(totalBytes / (uploadChunkBytes * 2), 1);
       emit({
         uploadMbps: Number(instMbps.toFixed(2)),
-        peakUploadMbps: Number(peakUpload.toFixed(2)),
+        peakUploadMbps: Number(Math.max(peakUpload, instMbps).toFixed(2)),
         samples: [...downloadSamples, ...uploadSamples],
-        progressPct: 62 + Math.round(phaseRatio * 36),
+        progressPct: 67 + Math.round(byteRatio * 31),
       });
-    }, 110);
+    }, 100);
 
-    const uploadWorker = async (workerIdx: number) => {
-      while (!ulStopped && !signal.aborted) {
-        await new Promise<void>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          activeXhrs.add(xhr);
-          xhr.open('POST', `/api/speed/upload?w=${workerIdx}&t=${Date.now()}`, true);
-          xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+    const runUploadRequest = (workerIdx: number) =>
+      new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        activeXhrs.add(xhr);
+        xhr.open('POST', `https://speed.cloudflare.com/__up?t=${Date.now()}&w=${workerIdx}`, true);
 
-          xhr.upload.onprogress = (evt) => {
-            if (evt.lengthComputable) {
-              activeWorkerLoaded[workerIdx] = evt.loaded;
-            }
-          };
+        xhr.upload.onprogress = (evt) => {
+          if (evt.lengthComputable) {
+            workerLoaded[workerIdx] = evt.loaded;
+          }
+        };
 
-          xhr.onload = () => {
-            activeXhrs.delete(xhr);
-            completedUploadBytes += uploadPayload.byteLength;
-            activeWorkerLoaded[workerIdx] = 0;
+        xhr.onload = () => {
+          activeXhrs.delete(xhr);
+          if (xhr.status >= 200 && xhr.status < 300) {
+            workerLoaded[workerIdx] = uploadChunkBytes;
             resolve();
-          };
+          } else {
+            reject(new Error(`Cloudflare upload returned HTTP ${xhr.status}`));
+          }
+        };
 
-          xhr.onerror = () => {
-            activeXhrs.delete(xhr);
-            activeWorkerLoaded[workerIdx] = 0;
-            if (ulStopped || signal.aborted) resolve();
-            else reject(new Error('Upload network error'));
-          };
+        xhr.onerror = () => {
+          activeXhrs.delete(xhr);
+          if (ulStopped || signal.aborted) resolve();
+          else reject(new Error('Upload network error reaching Cloudflare endpoint'));
+        };
 
-          xhr.onabort = () => {
-            activeXhrs.delete(xhr);
-            completedUploadBytes += activeWorkerLoaded[workerIdx];
-            activeWorkerLoaded[workerIdx] = 0;
-            resolve();
-          };
+        xhr.onabort = () => {
+          activeXhrs.delete(xhr);
+          resolve();
+        };
 
-          xhr.send(uploadPayload);
-        });
-      }
-    };
+        xhr.send(uploadPayload);
+      });
 
     try {
-      await Promise.all([uploadWorker(0), uploadWorker(1)]);
+      await Promise.all([runUploadRequest(0), runUploadRequest(1)]);
     } finally {
-      window.clearTimeout(ulEndTimer);
+      window.clearTimeout(ulTimeout);
       window.clearInterval(ulInterval);
       signal.removeEventListener('abort', abortUpload);
     }
 
     if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
 
+    const totalUploadSec = Math.max((performance.now() - uploadStartMs) / 1000, 0.05);
+    const totalUploadedBytes = getTotalUploaded();
+    const overallUploadMbps = (totalUploadedBytes * 8) / (totalUploadSec * 1_000_000);
     const ulMeasurements = uploadSamples.map((s) => s.mbps).filter((v) => v > 0);
-    const ulTrimStart = Math.floor(ulMeasurements.length * 0.2);
+    const ulTrimStart = Math.floor(ulMeasurements.length * 0.15);
     const ulSustainedSlice = ulMeasurements.slice(ulTrimStart);
     const finalUploadMbps =
-      ulSustainedSlice.length > 0
-        ? ulSustainedSlice.reduce((a, b) => a + b, 0) / ulSustainedSlice.length
-        : (getTotalUploaded() * 8) /
-          (Math.max((performance.now() - uploadStartMs) / 1000, 0.1) * 1_000_000);
+      ulSustainedSlice.length > 0 ? average(ulSustainedSlice) : overallUploadMbps;
 
     const completed: SpeedMetrics = {
       ...state,

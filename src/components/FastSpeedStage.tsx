@@ -195,7 +195,7 @@ export function FastSpeedStage({
             <p className="mt-1 font-mono text-xs text-slate-500 dark:text-slate-400">
               {metrics.minPingMs !== null
                 ? `Min ${formatLatency(metrics.minPingMs)} ms · ${metrics.pingSamples.length} probes`
-                : '12 uncached probes'}
+                : '5 Cloudflare RTT probes'}
             </p>
           </div>
 

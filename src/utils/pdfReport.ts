@@ -1,0 +1,338 @@
+import { jsPDF } from 'jspdf';
+import type {
+  NetworkDiagnostics,
+  SpeedMetrics,
+  SpeedUnit,
+  TestRunRecord,
+} from '../types/network';
+import { formatLatency, formatThroughput, formatTimeShort } from './formatters';
+
+interface PdfReportInput {
+  metrics: SpeedMetrics;
+  network: NetworkDiagnostics;
+  unit: SpeedUnit;
+  history: TestRunRecord[];
+}
+
+function drawWatermark(doc: jsPDF, watermarkText: string) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  doc.saveGraphicsState();
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(22);
+  doc.setTextColor(226, 232, 240);
+
+  // Subtle repeating diagonal watermark grid behind report content
+  const rows = [55, 130, 205, 275];
+  const cols = [45, 145];
+  for (const y of rows) {
+    for (const x of cols) {
+      doc.text(watermarkText, x, y, {
+        align: 'center',
+        angle: 34,
+      });
+    }
+  }
+
+  // Centered primary watermark stamp
+  doc.setFontSize(32);
+  doc.setTextColor(218, 226, 236);
+  doc.text('TESTLINE REPORT', pageWidth / 2, pageHeight / 2, {
+    align: 'center',
+    angle: 34,
+  });
+  doc.restoreGraphicsState();
+}
+
+export function exportNetworkReportPdf({
+  metrics,
+  network,
+  unit,
+  history,
+}: PdfReportInput): void {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const marginX = 16;
+  const contentWidth = pageWidth - marginX * 2;
+  let cursorY = 18;
+
+  const ensureSpace = (neededMm: number) => {
+    if (cursorY + neededMm > pageHeight - 18) {
+      doc.addPage();
+      drawWatermark(doc, 'TESTLINE · NETWORK REPORT');
+      cursorY = 18;
+    }
+  };
+
+  // Draw watermark first so all report content renders cleanly above it
+  drawWatermark(doc, 'TESTLINE · NETWORK REPORT');
+
+  // Header
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.setTextColor(15, 23, 42);
+  doc.text('TestLine Network & Speed Diagnostic Report', marginX, cursorY);
+  cursorY += 6;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  doc.setTextColor(100, 116, 139);
+  const generatedStr = new Date().toLocaleString();
+  doc.text(`Generated: ${generatedStr}  ·  Unit: ${unit}`, marginX, cursorY);
+  cursorY += 4;
+
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.35);
+  doc.line(marginX, cursorY, pageWidth - marginX, cursorY);
+  cursorY += 9;
+
+  // Section 1: Speed Test Results
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(15, 23, 42);
+  doc.text('1. Speed Benchmark Summary', marginX, cursorY);
+  cursorY += 6;
+
+  const speedCards = [
+    {
+      label: 'Download Speed',
+      value: `${formatThroughput(metrics.downloadMbps, unit)} ${unit}`,
+      sub:
+        metrics.peakDownloadMbps !== null
+          ? `Peak ${formatThroughput(metrics.peakDownloadMbps, unit)} ${unit}`
+          : 'Sustained stream',
+    },
+    {
+      label: 'Upload Speed',
+      value: `${formatThroughput(metrics.uploadMbps, unit)} ${unit}`,
+      sub:
+        metrics.peakUploadMbps !== null
+          ? `Peak ${formatThroughput(metrics.peakUploadMbps, unit)} ${unit}`
+          : 'Sustained stream',
+    },
+    {
+      label: 'Median Ping',
+      value: `${formatLatency(metrics.pingMs)} ms`,
+      sub:
+        metrics.minPingMs !== null
+          ? `Min ${formatLatency(metrics.minPingMs)} ms`
+          : 'RTT probes',
+    },
+    {
+      label: 'Jitter',
+      value: `${formatLatency(metrics.jitterMs)} ms`,
+      sub: `${metrics.pingSamples.length} probes`,
+    },
+  ];
+
+  const cardGap = 4;
+  const cardW = (contentWidth - cardGap * 3) / 4;
+  const cardH = 22;
+
+  speedCards.forEach((card, idx) => {
+    const x = marginX + idx * (cardW + cardGap);
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(x, cursorY, cardW, cardH, 2, 2, 'S');
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text(card.label, x + 3, cursorY + 5.5);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text(card.value, x + 3, cursorY + 13);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(card.sub, x + 3, cursorY + 18.5);
+  });
+
+  cursorY += cardH + 10;
+
+  // Section 2: Proxy / VPN Detection
+  ensureSpace(34);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(15, 23, 42);
+  doc.text('2. Proxy & VPN Detection', marginX, cursorY);
+  cursorY += 5.5;
+
+  const { proxyDetection } = network;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  if (proxyDetection.detected) {
+    doc.setTextColor(180, 83, 9);
+    doc.text(
+      `${proxyDetection.category} (${proxyDetection.confidence} confidence)`,
+      marginX,
+      cursorY
+    );
+  } else {
+    doc.setTextColor(15, 118, 110);
+    doc.text('Direct Connection — No proxy or VPN signals detected', marginX, cursorY);
+  }
+  cursorY += 5.5;
+
+  if (proxyDetection.signals.length > 0) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(51, 65, 85);
+    for (const signal of proxyDetection.signals) {
+      const wrapped = doc.splitTextToSize(`• ${signal}`, contentWidth - 4);
+      ensureSpace(wrapped.length * 4.5 + 2);
+      doc.text(wrapped, marginX + 2, cursorY);
+      cursorY += wrapped.length * 4.5;
+    }
+  }
+  cursorY += 6;
+
+  // Section 3: Network, IP & DNS Diagnostics
+  ensureSpace(65);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(15, 23, 42);
+  doc.text('3. Network, IP & DNS Diagnostics', marginX, cursorY);
+  cursorY += 6;
+
+  const locationStr =
+    [network.city, network.region, network.country].filter(Boolean).join(', ') ||
+    'Unavailable';
+
+  const rows: Array<[string, string]> = [
+    ['Primary Public IP', network.primaryIp ?? 'Unavailable'],
+    ['IPv4 Address', network.ipv4 ?? 'Not detected'],
+    ['IPv6 Address', network.ipv6 ?? 'Not detected'],
+    ['ISP / Carrier', network.isp ?? 'Unavailable'],
+    [
+      'Autonomous System (ASN)',
+      [network.asn, network.org].filter(Boolean).join(' · ') || 'Unavailable',
+    ],
+    ['Approximate Location', locationStr],
+    ['Timezone', network.timezone ?? 'Unavailable'],
+    ['Reverse DNS (PTR)', network.ptrHostname ?? 'No PTR record published'],
+    [
+      'DoH Resolver Probe',
+      network.dohReachable
+        ? `${network.dohResolver} · Reachable (${network.dohLatencyMs?.toFixed(1) ?? '—'} ms)`
+        : `${network.dohResolver} · Unreachable`,
+    ],
+    [
+      'Transport Protocol',
+      [
+        network.protocol?.toUpperCase(),
+        network.httpVersion ? `HTTP/${network.httpVersion}` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ') || 'HTTPS',
+    ],
+    [
+      'Browser Link Hint',
+      network.connectionHint
+        ? [
+            network.connectionHint.effectiveType?.toUpperCase(),
+            network.connectionHint.downlinkMbps !== undefined
+              ? `~${network.connectionHint.downlinkMbps} Mbps cap`
+              : null,
+            network.connectionHint.rttMs !== undefined
+              ? `${network.connectionHint.rttMs} ms RTT`
+              : null,
+          ]
+            .filter(Boolean)
+            .join(' · ') || 'Available'
+        : 'Not exposed by browser',
+    ],
+  ];
+
+  rows.forEach(([label, val], idx) => {
+    ensureSpace(8);
+    if (idx > 0) {
+      doc.setDrawColor(241, 245, 249);
+      doc.setLineWidth(0.2);
+      doc.line(marginX, cursorY - 3.5, pageWidth - marginX, cursorY - 3.5);
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text(label, marginX, cursorY);
+
+    doc.setFont('courier', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(15, 23, 42);
+    const valLines = doc.splitTextToSize(val, contentWidth - 58);
+    doc.text(valLines, marginX + 56, cursorY);
+    cursorY += Math.max(valLines.length * 4.5, 6.2);
+  });
+
+  // Section 4: Session History (if present)
+  if (history.length > 0) {
+    cursorY += 5;
+    ensureSpace(26);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(15, 23, 42);
+    doc.text('4. Recent Session Runs', marginX, cursorY);
+    cursorY += 6;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text('Time', marginX, cursorY);
+    doc.text(`Download (${unit})`, marginX + 34, cursorY);
+    doc.text(`Upload (${unit})`, marginX + 68, cursorY);
+    doc.text('Ping (ms)', marginX + 100, cursorY);
+    doc.text('Jitter (ms)', marginX + 125, cursorY);
+    doc.text('Public IP', marginX + 150, cursorY);
+    cursorY += 2.5;
+
+    doc.setDrawColor(203, 213, 225);
+    doc.line(marginX, cursorY, pageWidth - marginX, cursorY);
+    cursorY += 4.5;
+
+    doc.setFont('courier', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(15, 23, 42);
+
+    for (const rec of history.slice(0, 8)) {
+      ensureSpace(6.5);
+      doc.text(formatTimeShort(rec.timestamp), marginX, cursorY);
+      doc.text(formatThroughput(rec.downloadMbps, unit), marginX + 34, cursorY);
+      doc.text(formatThroughput(rec.uploadMbps, unit), marginX + 68, cursorY);
+      doc.text(formatLatency(rec.pingMs), marginX + 100, cursorY);
+      doc.text(formatLatency(rec.jitterMs), marginX + 125, cursorY);
+      const ipText = (rec.ip ?? '—').slice(0, 22);
+      doc.text(ipText, marginX + 150, cursorY);
+      cursorY += 5.5;
+    }
+  }
+
+  // Footer on every page
+  const pageCount = doc.getNumberOfPages();
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      `TestLine Diagnostic Report  ·  Page ${p} of ${pageCount}`,
+      marginX,
+      pageHeight - 10
+    );
+  }
+
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[:T]/g, '-')
+    .slice(0, 19);
+  doc.save(`testline-report-${stamp}.pdf`);
+}
