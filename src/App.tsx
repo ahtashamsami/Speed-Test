@@ -15,8 +15,8 @@ import type {
 import { fetchNetworkDiagnostics } from './utils/networkProbe';
 import { INITIAL_SPEED_METRICS, runSpeedBenchmark } from './utils/speedEngine';
 
-const HISTORY_STORAGE_KEY = 'linerate_history_v1';
-const THEME_STORAGE_KEY = 'linerate_theme';
+const HISTORY_STORAGE_KEY = 'testline_history_v1';
+const THEME_STORAGE_KEY = 'testline_theme';
 
 function loadInitialTheme(): ThemeMode {
   if (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')) {
@@ -272,7 +272,7 @@ export default function App() {
 
       <footer className="border-t border-slate-200 dark:border-slate-800 py-6 mt-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <span>LineRate · Single-page network speed and IP diagnostics</span>
+          <span>TestLine · Single-page network speed and IP diagnostics</span>
           <span>Measurements reflect live browser-to-edge transport throughput</span>
         </div>
       </footer>
