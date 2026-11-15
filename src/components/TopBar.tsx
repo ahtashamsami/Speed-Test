@@ -17,7 +17,7 @@ export function TopBar({ phase, onStartTest, onStopTest }: TopBarProps) {
           href="#speed-test"
           className="font-display text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 rounded"
         >
-          LineRate
+          TestLine
         </a>
 
         <nav
