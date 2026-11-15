@@ -1,0 +1,6 @@
+{
+  "name": "LineRate",
+  "description": "Single-page internet speed benchmark and full IPv4/IPv6 network diagnostics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,409 @@
+import crypto from 'node:crypto';
+import dns from 'node:dns/promises';
+import net from 'node:net';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import express, { type Request, type Response } from 'express';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const PORT = Number(process.env.PORT) || 3000;
+const CHUNK_SIZE = 1024 * 1024; // 1 MiB high-entropy uncompressible chunk
+const RANDOM_CHUNK = crypto.randomBytes(CHUNK_SIZE);
+
+const KNOWN_VPN_OR_RELAY_KEYWORDS = [
+  'vpn',
+  'proxy',
+  'tor ',
+  'exit node',
+  'mullvad',
+  'nordvpn',
+  'protonvpn',
+  'proton ag',
+  'expressvpn',
+  'surfshark',
+  'private internet access',
+  'windscribe',
+  'cyberghost',
+  'ipvanish',
+  'vyprvpn',
+  'tailscale',
+  'wireguard',
+  'cloudflare warp',
+  'm247',
+  'datacamp',
+  'tzulo',
+  'digitalocean',
+  'hetzner',
+  'ovh',
+  'linode',
+  'akamai connected cloud',
+  'vultr',
+  'amazon',
+  'aws',
+  'google cloud',
+  'microsoft azure',
+];
+
+function extractClientIpInfo(req: Request): { ip: string; hopCount: number } {
+  const forwarded = req.headers['x-forwarded-for'];
+  let rawIp = '';
+  let hopCount = 0;
+
+  if (typeof forwarded === 'string' && forwarded.trim().length > 0) {
+    const hops = forwarded
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    hopCount = hops.length;
+    rawIp = hops[0] || '';
+  } else if (Array.isArray(forwarded) && forwarded.length > 0) {
+    const hops = forwarded
+      .flatMap((item) => item.split(','))
+      .map((s) => s.trim())
+      .filter(Boolean);
+    hopCount = hops.length;
+    rawIp = hops[0] || '';
+  } else if (typeof req.headers['x-real-ip'] === 'string') {
+    rawIp = req.headers['x-real-ip'].trim();
+    hopCount = 1;
+  } else {
+    rawIp = req.ip || req.socket.remoteAddress || '';
+  }
+
+  if (rawIp.startsWith('::ffff:')) {
+    rawIp = rawIp.slice(7);
+  }
+  return { ip: rawIp, hopCount };
+}
+
+function isPrivateOrLoopbackIp(ip: string): boolean {
+  if (!ip) return true;
+  if (ip === '::1' || ip === '127.0.0.1' || ip === 'localhost') return true;
+  if (net.isIPv4(ip)) {
+    const parts = ip.split('.').map(Number);
+    if (parts[0] === 10) return true;
+    if (parts[0] === 127) return true;
+    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+    if (parts[0] === 192 && parts[1] === 168) return true;
+    if (parts[0] === 169 && parts[1] === 254) return true;
+    if (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) return true;
+  }
+  if (net.isIPv6(ip)) {
+    const lower = ip.toLowerCase();
+    if (lower.startsWith('fc') || lower.startsWith('fd') || lower.startsWith('fe80')) {
+      return true;
+    }
+  }
+  return false;
+}
+
+async function fetchWithTimeout(url: string, timeoutMs = 2500): Promise<globalThis.Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function lookupPtrHostname(ip: string): Promise<string | null> {
+  if (!ip || net.isIP(ip) === 0) return null;
+  try {
+    const result = await Promise.race([
+      dns.reverse(ip),
+      new Promise<string[]>((_, reject) => setTimeout(() => reject(new Error('PTR timeout')), 1500)),
+    ]);
+    return result && result.length > 0 ? result[0] : null;
+  } catch {
+    return null;
+  }
+}
+
+interface IpMetadata {
+  isp: string | null;
+  org: string | null;
+  asn: string | null;
+  city: string | null;
+  region: string | null;
+  country: string | null;
+  countryCode: string | null;
+  timezone: string | null;
+  proxyFlag: boolean;
+  hostingFlag: boolean;
+}
+
+async function enrichIpMetadata(ip: string): Promise<IpMetadata> {
+  const empty: IpMetadata = {
+    isp: null,
+    org: null,
+    asn: null,
+    city: null,
+    region: null,
+    country: null,
+    countryCode: null,
+    timezone: null,
+    proxyFlag: false,
+    hostingFlag: false,
+  };
+
+  if (!ip || isPrivateOrLoopbackIp(ip)) return empty;
+
+  const [ipWhoResult, ipApiResult] = await Promise.allSettled([
+    fetchWithTimeout(`https://ipwho.is/${encodeURIComponent(ip)}`, 2800).then((r) =>
+      r.ok ? r.json() : null
+    ),
+    fetchWithTimeout(
+      `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,countryCode,regionName,city,isp,org,as,timezone,proxy,hosting`,
+      2800
+    ).then((r) => (r.ok ? r.json() : null)),
+  ]);
+
+  const ipWho =
+    ipWhoResult.status === 'fulfilled'
+      ? (ipWhoResult.value as {
+          success?: boolean;
+          city?: string;
+          region?: string;
+          country?: string;
+          country_code?: string;
+          connection?: { asn?: number; org?: string; isp?: string };
+          timezone?: { id?: string };
+        } | null)
+      : null;
+
+  const ipApi =
+    ipApiResult.status === 'fulfilled'
+      ? (ipApiResult.value as {
+          status?: string;
+          country?: string;
+          countryCode?: string;
+          regionName?: string;
+          city?: string;
+          isp?: string;
+          org?: string;
+          as?: string;
+          timezone?: string;
+          proxy?: boolean;
+          hosting?: boolean;
+        } | null)
+      : null;
+
+  const whoOk = Boolean(ipWho && ipWho.success !== false);
+  const apiOk = Boolean(ipApi && ipApi.status === 'success');
+
+  const asnMatch = apiOk && ipApi?.as ? ipApi.as.match(/^(AS\d+)/i) : null;
+
+  return {
+    isp:
+      (whoOk ? ipWho?.connection?.isp || ipWho?.connection?.org : null) ||
+      (apiOk ? ipApi?.isp || ipApi?.org : null) ||
+      null,
+    org: (whoOk ? ipWho?.connection?.org : null) || (apiOk ? ipApi?.org : null) || null,
+    asn:
+      (whoOk && ipWho?.connection?.asn ? `AS${ipWho.connection.asn}` : null) ||
+      (asnMatch ? asnMatch[1] : apiOk ? ipApi?.as || null : null) ||
+      null,
+    city: (whoOk ? ipWho?.city : null) || (apiOk ? ipApi?.city : null) || null,
+    region: (whoOk ? ipWho?.region : null) || (apiOk ? ipApi?.regionName : null) || null,
+    country: (whoOk ? ipWho?.country : null) || (apiOk ? ipApi?.country : null) || null,
+    countryCode:
+      (whoOk ? ipWho?.country_code : null) || (apiOk ? ipApi?.countryCode : null) || null,
+    timezone: (whoOk ? ipWho?.timezone?.id : null) || (apiOk ? ipApi?.timezone : null) || null,
+    proxyFlag: apiOk ? Boolean(ipApi?.proxy) : false,
+    hostingFlag: apiOk ? Boolean(ipApi?.hosting) : false,
+  };
+}
+
+function findProviderKeywordMatch(fields: Array<string | null>): string | null {
+  const haystack = fields.filter(Boolean).join(' ').toLowerCase();
+  if (!haystack) return null;
+  for (const kw of KNOWN_VPN_OR_RELAY_KEYWORDS) {
+    if (haystack.includes(kw)) {
+      return kw.trim();
+    }
+  }
+  return null;
+}
+
+async function startServer() {
+  const app = express();
+  app.set('trust proxy', true);
+  app.disable('x-powered-by');
+  app.disable('etag');
+
+  app.get('/api/speed/ping', (_req: Request, res: Response) => {
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      Pragma: 'no-cache',
+      Expires: '0',
+      'Surrogate-Control': 'no-store',
+    });
+    res.status(200).json({ ok: true, serverTs: Date.now() });
+  });
+
+  app.get('/api/speed/download', (req: Request, res: Response) => {
+    const requested = Number(req.query.bytes);
+    const totalBytes = Number.isFinite(requested)
+      ? Math.min(Math.max(Math.floor(requested), 65536), 16 * 1024 * 1024)
+      : 8 * 1024 * 1024;
+
+    res.set({
+      'Content-Type': 'application/octet-stream',
+      'Content-Length': String(totalBytes),
+      'Cache-Control': 'no-store, no-cache, no-transform',
+      'X-Content-Type-Options': 'nosniff',
+    });
+
+    let sent = 0;
+    let aborted = false;
+
+    req.on('close', () => {
+      aborted = true;
+    });
+
+    function pump() {
+      if (aborted) return;
+      while (sent < totalBytes) {
+        const remaining = totalBytes - sent;
+        const slice = remaining >= CHUNK_SIZE ? RANDOM_CHUNK : RANDOM_CHUNK.subarray(0, remaining);
+        sent += slice.length;
+        const canContinue = res.write(slice);
+        if (!canContinue) {
+          res.once('drain', pump);
+          return;
+        }
+      }
+      res.end();
+    }
+
+    pump();
+  });
+
+  app.post('/api/speed/upload', (req: Request, res: Response) => {
+    const startedAt = performance.now();
+    let receivedBytes = 0;
+
+    req.on('data', (chunk: Buffer) => {
+      receivedBytes += chunk.length;
+    });
+
+    req.on('end', () => {
+      const durationMs = Math.max(performance.now() - startedAt, 0.1);
+      res.set({
+        'Cache-Control': 'no-store, no-cache',
+      });
+      res.status(200).json({
+        receivedBytes,
+        durationMs: Number(durationMs.toFixed(2)),
+      });
+    });
+
+    req.on('error', () => {
+      if (!res.headersSent) {
+        res.status(400).json({ error: 'Upload stream interrupted' });
+      }
+    });
+  });
+
+  app.get('/api/network-info', async (req: Request, res: Response) => {
+    res.set({
+      'Cache-Control': 'no-store, no-cache',
+    });
+
+    const extracted = extractClientIpInfo(req);
+    let observedIp = extracted.ip;
+    let ipSource: 'forwarded-header' | 'outbound-fallback' = 'forwarded-header';
+
+    if (!observedIp || isPrivateOrLoopbackIp(observedIp)) {
+      try {
+        const ipRes = await fetchWithTimeout('https://api64.ipify.org?format=json', 2200);
+        if (ipRes.ok) {
+          const parsed = (await ipRes.json()) as { ip?: string };
+          if (parsed.ip) {
+            observedIp = parsed.ip;
+            ipSource = 'outbound-fallback';
+          }
+        }
+      } catch {
+        // Keep detected IP
+      }
+    }
+
+    const ipVersion = net.isIPv6(observedIp) ? 6 : net.isIPv4(observedIp) ? 4 : null;
+
+    const [ptrHostname, geo] = await Promise.all([
+      lookupPtrHostname(observedIp),
+      enrichIpMetadata(observedIp),
+    ]);
+
+    const viaHeader =
+      typeof req.headers['via'] === 'string'
+        ? req.headers['via']
+        : typeof req.headers['forwarded'] === 'string'
+        ? req.headers['forwarded']
+        : null;
+
+    const matchedProviderSignal = findProviderKeywordMatch([
+      geo.isp,
+      geo.org,
+      geo.asn,
+      ptrHostname,
+    ]);
+
+    const isProxyOrVpn = Boolean(geo.proxyFlag || viaHeader || matchedProviderSignal);
+
+    res.json({
+      observedIp: observedIp || null,
+      ipVersion,
+      ipSource,
+      ptrHostname,
+      isp: geo.isp,
+      org: geo.org,
+      asn: geo.asn,
+      city: geo.city,
+      region: geo.region,
+      country: geo.country,
+      countryCode: geo.countryCode,
+      timezone: geo.timezone,
+      protocol: req.headers['x-forwarded-proto'] || req.protocol || 'http',
+      httpVersion: req.httpVersion,
+      serverService: process.env.K_SERVICE ? 'Cloud Run Edge' : 'Local Benchmark Node',
+      proxyDetection: {
+        isProxyOrVpn,
+        isHosting: geo.hostingFlag,
+        proxyFlag: geo.proxyFlag,
+        hostingFlag: geo.hostingFlag,
+        viaHeader,
+        forwardedHopCount: extracted.hopCount,
+        matchedProviderSignal,
+      },
+    });
+  });
+
+  if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distDir = path.join(__dirname, 'dist');
+    app.use(express.static(distDir));
+    app.get('*', (_req: Request, res: Response) => {
+      res.sendFile(path.join(distDir, 'index.html'));
+    });
+  }
+
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`LineRate server listening on http://0.0.0.0:${PORT}`);
+  });
+}
+
+startServer().catch((err) => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
+});
