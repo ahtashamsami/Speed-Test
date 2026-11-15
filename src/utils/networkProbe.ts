@@ -32,6 +32,50 @@ interface ServerNetworkResponse {
   proxyDetection?: ServerProxyDetection;
 }
 
+interface IpWhoIsResponse {
+  ip?: string;
+  success?: boolean;
+  city?: string;
+  region?: string;
+  country?: string;
+  country_code?: string;
+  isp?: string;
+  org?: string;
+  connection?: {
+    asn?: number;
+    org?: string;
+    isp?: string;
+    domain?: string;
+  };
+  timezone?: {
+    id?: string;
+  };
+}
+
+interface GeoJsResponse {
+  ip?: string;
+  city?: string;
+  region?: string;
+  country?: string;
+  country_code?: string;
+  organization_name?: string;
+  organization?: string;
+  asn?: number;
+  timezone?: string;
+}
+
+interface ClientGeoResult {
+  ip: string | null;
+  isp: string | null;
+  org: string | null;
+  asn: string | null;
+  city: string | null;
+  region: string | null;
+  country: string | null;
+  countryCode: string | null;
+  timezone: string | null;
+}
+
 interface NetworkInformationLike {
   effectiveType?: string;
   downlink?: number;
@@ -55,6 +99,66 @@ async function fetchJsonWithTimeout<T>(
   } finally {
     window.clearTimeout(timer);
   }
+}
+
+async function fetchClientGeoMetadata(): Promise<ClientGeoResult> {
+  // Primary: https://ipwho.is/ (HTTPS + CORS without API key)
+  const ipWho = await fetchJsonWithTimeout<IpWhoIsResponse>('https://ipwho.is/', 3500);
+  if (ipWho && ipWho.success !== false) {
+    const ispValue = ipWho.connection?.isp || ipWho.isp || ipWho.connection?.org || ipWho.org || null;
+    const orgValue = ipWho.connection?.org || ipWho.org || ispValue;
+    const asnValue =
+      typeof ipWho.connection?.asn === 'number' && ipWho.connection.asn > 0
+        ? `AS${ipWho.connection.asn}`
+        : null;
+
+    return {
+      ip: ipWho.ip || null,
+      isp: ispValue,
+      org: orgValue,
+      asn: asnValue,
+      city: ipWho.city || null,
+      region: ipWho.region || null,
+      country: ipWho.country || null,
+      countryCode: ipWho.country_code || null,
+      timezone: ipWho.timezone?.id || null,
+    };
+  }
+
+  // Fallback: https://get.geojs.io/v1/ip/geo.json (HTTPS + CORS without API key)
+  const geoJs = await fetchJsonWithTimeout<GeoJsResponse>(
+    'https://get.geojs.io/v1/ip/geo.json',
+    3500
+  );
+  if (geoJs) {
+    const ispValue = geoJs.organization_name || geoJs.organization || null;
+    const asnValue =
+      typeof geoJs.asn === 'number' && geoJs.asn > 0 ? `AS${geoJs.asn}` : null;
+
+    return {
+      ip: geoJs.ip || null,
+      isp: ispValue,
+      org: geoJs.organization_name || null,
+      asn: asnValue,
+      city: geoJs.city || null,
+      region: geoJs.region || null,
+      country: geoJs.country || null,
+      countryCode: geoJs.country_code || null,
+      timezone: geoJs.timezone || null,
+    };
+  }
+
+  return {
+    ip: null,
+    isp: null,
+    org: null,
+    asn: null,
+    city: null,
+    region: null,
+    country: null,
+    countryCode: null,
+    timezone: null,
+  };
 }
 
 function readBrowserConnectionHint(): BrowserConnectionHint | null {
@@ -101,20 +205,19 @@ function getBrowserTimezone(): string | null {
 
 function buildProxyDetection(
   serverInfo: ServerNetworkResponse | null,
+  apiTimezone: string | null,
   ipv4Candidate: string | null,
   ipv6Candidate: string | null
 ): ProxyDetectionResult {
   const browserTimezone = getBrowserTimezone();
-  const ipTimezone = serverInfo?.timezone ?? null;
   const serverProxy = serverInfo?.proxyDetection;
 
   const timezoneMismatch = Boolean(
     browserTimezone &&
-      ipTimezone &&
-      browserTimezone.toLowerCase() !== ipTimezone.toLowerCase()
+      apiTimezone &&
+      browserTimezone.toLowerCase() !== apiTimezone.toLowerCase()
   );
 
-  // Check if direct browser IPv4/IPv6 differs from edge-observed IP of the same version
   const ipMismatch = Boolean(
     serverInfo?.observedIp &&
       ((serverInfo.ipVersion === 4 && ipv4Candidate && ipv4Candidate !== serverInfo.observedIp) ||
@@ -143,7 +246,7 @@ function buildProxyDetection(
   }
   if (timezoneMismatch) {
     signals.push(
-      `Browser timezone (${browserTimezone}) differs from IP geolocation timezone (${ipTimezone})`
+      `Browser timezone (${browserTimezone}) differs from IP geolocation timezone (${apiTimezone})`
     );
   }
 
@@ -174,7 +277,7 @@ function buildProxyDetection(
     timezoneMismatch,
     ipMismatch,
     browserTimezone,
-    ipTimezone,
+    ipTimezone: apiTimezone,
     viaHeader: serverProxy?.viaHeader ?? null,
     forwardedHopCount: serverProxy?.forwardedHopCount ?? 0,
     matchedProviderSignal: serverProxy?.matchedProviderSignal ?? null,
@@ -183,55 +286,75 @@ function buildProxyDetection(
 }
 
 export async function fetchNetworkDiagnostics(): Promise<NetworkDiagnostics> {
-  const [serverInfo, ipv4Probe, ipv6Probe, dohProbe] = await Promise.all([
+  const [clientGeo, serverInfo, ipv4Probe, ipv6Probe, dohProbe] = await Promise.all([
+    fetchClientGeoMetadata(),
     fetchJsonWithTimeout<ServerNetworkResponse>('/api/network-info', 4500),
     fetchJsonWithTimeout<{ ip?: string }>('https://api.ipify.org?format=json', 3000),
     fetchJsonWithTimeout<{ ip?: string }>('https://api6.ipify.org?format=json', 2500),
     probeDohResolver(),
   ]);
 
+  const geoIp = clientGeo.ip;
+  const geoIsV4 = Boolean(geoIp && !geoIp.includes(':'));
+  const geoIsV6 = Boolean(geoIp && geoIp.includes(':'));
+
   const ipv4Candidate =
-    ipv4Probe?.ip && !ipv4Probe.ip.includes(':')
-      ? ipv4Probe.ip
-      : serverInfo?.ipVersion === 4
-      ? serverInfo.observedIp
-      : null;
+    (ipv4Probe?.ip && !ipv4Probe.ip.includes(':') ? ipv4Probe.ip : null) ||
+    (geoIsV4 ? geoIp : null) ||
+    (serverInfo?.ipVersion === 4 ? serverInfo.observedIp : null);
 
   const ipv6Candidate =
-    ipv6Probe?.ip && ipv6Probe.ip.includes(':')
-      ? ipv6Probe.ip
-      : serverInfo?.ipVersion === 6
-      ? serverInfo.observedIp
-      : null;
+    (ipv6Probe?.ip && ipv6Probe.ip.includes(':') ? ipv6Probe.ip : null) ||
+    (geoIsV6 ? geoIp : null) ||
+    (serverInfo?.ipVersion === 6 ? serverInfo.observedIp : null);
 
-  const primaryIp = serverInfo?.observedIp || ipv4Candidate || ipv6Candidate || null;
+  const primaryIp =
+    geoIp || serverInfo?.observedIp || ipv4Candidate || ipv6Candidate || null;
   const ipVersion = primaryIp
     ? primaryIp.includes(':')
       ? 6
       : 4
     : serverInfo?.ipVersion ?? null;
 
-  const hasError = !serverInfo && !ipv4Candidate && !ipv6Candidate;
-  const proxyDetection = buildProxyDetection(serverInfo, ipv4Candidate, ipv6Candidate);
+  const isp = clientGeo.isp || serverInfo?.isp || null;
+  const org = clientGeo.org || serverInfo?.org || null;
+  const asn = clientGeo.asn || serverInfo?.asn || null;
+  const city = clientGeo.city || serverInfo?.city || null;
+  const region = clientGeo.region || serverInfo?.region || null;
+  const country = clientGeo.country || serverInfo?.country || null;
+  const countryCode = clientGeo.countryCode || serverInfo?.countryCode || null;
+
+  const apiTimezone = clientGeo.timezone || serverInfo?.timezone || null;
+  const timezone = apiTimezone || getBrowserTimezone();
+
+  const hasError =
+    !primaryIp && !isp && !asn && !city && !country && !serverInfo;
+
+  const proxyDetection = buildProxyDetection(
+    serverInfo,
+    apiTimezone,
+    ipv4Candidate,
+    ipv6Candidate
+  );
 
   return {
     primaryIp,
     ipVersion,
     ipv4: ipv4Candidate,
     ipv6: ipv6Candidate,
-    isp: serverInfo?.isp ?? null,
-    org: serverInfo?.org ?? null,
-    asn: serverInfo?.asn ?? null,
-    city: serverInfo?.city ?? null,
-    region: serverInfo?.region ?? null,
-    country: serverInfo?.country ?? null,
-    countryCode: serverInfo?.countryCode ?? null,
-    timezone: serverInfo?.timezone ?? null,
+    isp,
+    org,
+    asn,
+    city,
+    region,
+    country,
+    countryCode,
+    timezone,
     ptrHostname: serverInfo?.ptrHostname ?? null,
     dohReachable: dohProbe.reachable,
     dohLatencyMs: dohProbe.latencyMs,
     dohResolver: 'Cloudflare DoH (1.1.1.1)',
-    protocol: serverInfo?.protocol ?? null,
+    protocol: serverInfo?.protocol ?? window.location.protocol.replace(':', ''),
     httpVersion: serverInfo?.httpVersion ?? null,
     serverService: serverInfo?.serverService ?? null,
     connectionHint: readBrowserConnectionHint(),

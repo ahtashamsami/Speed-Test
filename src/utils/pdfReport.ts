@@ -14,37 +14,6 @@ interface PdfReportInput {
   history: TestRunRecord[];
 }
 
-function drawWatermark(doc: jsPDF, watermarkText: string) {
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-
-  doc.saveGraphicsState();
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(22);
-  doc.setTextColor(226, 232, 240);
-
-  // Subtle repeating diagonal watermark grid behind report content
-  const rows = [55, 130, 205, 275];
-  const cols = [45, 145];
-  for (const y of rows) {
-    for (const x of cols) {
-      doc.text(watermarkText, x, y, {
-        align: 'center',
-        angle: 34,
-      });
-    }
-  }
-
-  // Centered primary watermark stamp
-  doc.setFontSize(32);
-  doc.setTextColor(218, 226, 236);
-  doc.text('TESTLINE REPORT', pageWidth / 2, pageHeight / 2, {
-    align: 'center',
-    angle: 34,
-  });
-  doc.restoreGraphicsState();
-}
-
 export function exportNetworkReportPdf({
   metrics,
   network,
@@ -66,13 +35,9 @@ export function exportNetworkReportPdf({
   const ensureSpace = (neededMm: number) => {
     if (cursorY + neededMm > pageHeight - 18) {
       doc.addPage();
-      drawWatermark(doc, 'TESTLINE · NETWORK REPORT');
       cursorY = 18;
     }
   };
-
-  // Draw watermark first so all report content renders cleanly above it
-  drawWatermark(doc, 'TESTLINE · NETWORK REPORT');
 
   // Header
   doc.setFont('helvetica', 'bold');
