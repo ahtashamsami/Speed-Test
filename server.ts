@@ -618,6 +618,28 @@ async function startServer() {
     res.status(200).send(WEB_MANIFEST_JSON);
   });
 
+  app.get('/.well-known/ard.json', async (_req: Request, res: Response) => {
+    const candidates = [
+      path.join(__dirname, '.well-known', 'ard.json'),
+      path.join(__dirname, 'public', '.well-known', 'ard.json'),
+      path.join(__dirname, 'dist', '.well-known', 'ard.json'),
+    ];
+    for (const filePath of candidates) {
+      try {
+        const content = await fs.readFile(filePath, 'utf-8');
+        res.set({
+          'Content-Type': 'application/json; charset=utf-8',
+          'Cache-Control': 'public, max-age=3600',
+        });
+        res.status(200).send(content);
+        return;
+      } catch {
+        // Try next candidate
+      }
+    }
+    res.status(404).json({ error: 'ard.json not found' });
+  });
+
   app.get('/ads.txt', (_req: Request, res: Response) => {
     res.set({
       'Content-Type': 'text/plain; charset=utf-8',

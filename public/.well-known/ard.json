@@ -1,0 +1,60 @@
+{
+  "$schema": "https://agenticresourcediscovery.org/schemas/ard-entry.schema.json",
+  "entries": [
+    {
+      "identifier": "urn:air:testline.net:diagnostics:speed-and-ip",
+      "displayName": "TestLine Internet Speed Test & IP Diagnostics",
+      "type": "text/html",
+      "url": "https://testline.net/",
+      "description": "Real-time internet speed benchmark (download, upload, ping, jitter) with dual-stack IPv4/IPv6 lookup, DNS-over-HTTPS latency check, proxy/VPN detection, and client-side PDF reporting by ECORZO LLC.",
+      "representativeQueries": [
+        "Test my internet download and upload speed",
+        "Check my ping latency and jitter for video calls",
+        "What is my public IPv4 and IPv6 address?",
+        "Am I behind a VPN, proxy, or datacenter relay?"
+      ],
+      "tags": [
+        "speed-test",
+        "bandwidth",
+        "latency",
+        "ip-diagnostics",
+        "network-tools"
+      ]
+    },
+    {
+      "identifier": "urn:air:testline.net:diagnostics:network-info",
+      "displayName": "TestLine Network & IP Inspection API",
+      "type": "application/json",
+      "url": "https://testline.net/api/network-info",
+      "description": "Ephemeral JSON diagnostic endpoint returning observed client IPv4/IPv6 address, reverse DNS (PTR) hostname, ISP/ASN metadata, geolocation city/country, protocol version, and proxy/hosting indicator flags.",
+      "representativeQueries": [
+        "Inspect public IP, ASN, ISP, and reverse DNS hostname",
+        "Check forwarding headers and VPN/proxy detection flags"
+      ],
+      "tags": [
+        "network-info",
+        "ip-lookup",
+        "asn",
+        "ptr-dns",
+        "json-api"
+      ]
+    },
+    {
+      "identifier": "urn:air:testline.net:docs:llms-context",
+      "displayName": "TestLine Technical Specification (llms.txt)",
+      "type": "text/plain",
+      "url": "https://testline.net/llms.txt",
+      "description": "Concise machine-readable reference describing TestLine measurement methodology, Cloudflare edge probes, privacy commitments, and canonical ECORZO LLC operator metadata.",
+      "representativeQueries": [
+        "How does TestLine measure download, upload, ping, and jitter?",
+        "Does TestLine store user IP addresses or speed test logs?"
+      ],
+      "tags": [
+        "llms-txt",
+        "documentation",
+        "methodology",
+        "privacy"
+      ]
+    }
+  ]
+}
