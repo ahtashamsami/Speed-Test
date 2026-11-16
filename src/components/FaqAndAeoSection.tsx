@@ -141,14 +141,14 @@ export const FaqAndAeoSection = memo(function FaqAndAeoSection({
               Direct answers about internet speed testing, IPv4/IPv6 diagnostics, and privacy
             </p>
           </div>
-          <div className="flex items-center gap-4 text-xs font-medium">
+          <div className="flex flex-wrap items-center gap-2.5 text-xs font-medium">
             <a
               href="/about"
               onClick={(e) => {
                 e.preventDefault();
                 onNavigate('about');
               }}
-              className="text-sky-700 dark:text-sky-400 hover:underline whitespace-nowrap"
+              className="inline-flex items-center min-h-[38px] px-2.5 py-1.5 rounded-lg text-sky-700 dark:text-sky-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:underline whitespace-nowrap transition-colors"
             >
               Full Methodology
             </a>
@@ -158,7 +158,7 @@ export const FaqAndAeoSection = memo(function FaqAndAeoSection({
                 e.preventDefault();
                 onNavigate('gdpr');
               }}
-              className="text-sky-700 dark:text-sky-400 hover:underline whitespace-nowrap"
+              className="inline-flex items-center min-h-[38px] px-2.5 py-1.5 rounded-lg text-sky-700 dark:text-sky-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:underline whitespace-nowrap transition-colors"
             >
               GDPR &amp; Data Policy
             </a>

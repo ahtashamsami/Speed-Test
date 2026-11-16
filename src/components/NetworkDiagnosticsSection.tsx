@@ -39,7 +39,7 @@ function CopyableValue({ value, fallback }: { value: string | null; fallback: st
         type="button"
         onClick={handleCopy}
         aria-label={`Copy ${value}`}
-        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+        className="inline-flex items-center justify-center gap-1 min-h-[36px] min-w-[36px] px-2.5 py-1.5 text-xs font-medium rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
       >
         {copied ? (
           <>
@@ -59,7 +59,7 @@ function CopyableValue({ value, fallback }: { value: string | null; fallback: st
 
 function DiagnosticRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4 border-b border-slate-100 dark:border-slate-800/80 last:border-b-0">
+    <div className="py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-4 border-b border-slate-100 dark:border-slate-800/80 last:border-b-0">
       <dt className="text-xs font-medium text-slate-500 dark:text-slate-400 shrink-0">
         {label}
       </dt>
@@ -131,12 +131,12 @@ export const NetworkDiagnosticsSection = memo(function NetworkDiagnosticsSection
             )}
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
             <button
               type="button"
               onClick={copyPrimaryIp}
               disabled={!network.primaryIp || network.loading}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+              className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 text-xs sm:text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
             >
               {heroCopied ? (
                 <>
@@ -155,7 +155,7 @@ export const NetworkDiagnosticsSection = memo(function NetworkDiagnosticsSection
               type="button"
               onClick={onRefresh}
               disabled={network.loading}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+              className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 text-xs sm:text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
             >
               <RefreshCw
                 className={`w-4 h-4 ${network.loading ? 'animate-spin' : ''}`}

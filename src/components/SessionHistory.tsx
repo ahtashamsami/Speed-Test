@@ -38,7 +38,7 @@ export const SessionHistory = memo(function SessionHistory({
           <button
             type="button"
             onClick={onClear}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+            className="inline-flex items-center gap-1.5 min-h-[38px] px-3.5 py-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
           >
             <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Clear History</span>
@@ -74,10 +74,10 @@ export const SessionHistory = memo(function SessionHistory({
                     key={rec.id}
                     className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
                   >
-                    <td className="py-2.5 pr-4 font-mono text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                    <td className="py-3 pr-4 font-mono text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">
                       {formatTimeShort(rec.timestamp)}
                     </td>
-                    <td className="py-2.5 px-4 text-right font-mono font-medium text-sky-700 dark:text-sky-300 whitespace-nowrap">
+                    <td className="py-3 px-4 text-right font-mono font-medium text-sky-700 dark:text-sky-300 whitespace-nowrap">
                       {formatThroughput(rec.downloadMbps, dlUnit)}
                       {unit === 'Auto' && rec.downloadMbps !== null && (
                         <span className="ml-1 text-xs font-normal text-slate-400 dark:text-slate-500">
@@ -85,7 +85,7 @@ export const SessionHistory = memo(function SessionHistory({
                         </span>
                       )}
                     </td>
-                    <td className="py-2.5 px-4 text-right font-mono font-medium text-teal-700 dark:text-teal-300 whitespace-nowrap">
+                    <td className="py-3 px-4 text-right font-mono font-medium text-teal-700 dark:text-teal-300 whitespace-nowrap">
                       {formatThroughput(rec.uploadMbps, ulUnit)}
                       {unit === 'Auto' && rec.uploadMbps !== null && (
                         <span className="ml-1 text-xs font-normal text-slate-400 dark:text-slate-500">
@@ -93,13 +93,13 @@ export const SessionHistory = memo(function SessionHistory({
                         </span>
                       )}
                     </td>
-                  <td className="py-2.5 px-4 text-right font-mono text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                  <td className="py-3 px-4 text-right font-mono text-slate-800 dark:text-slate-200 whitespace-nowrap">
                     {formatLatency(rec.pingMs)}
                   </td>
-                  <td className="py-2.5 px-4 text-right font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                  <td className="py-3 px-4 text-right font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap">
                     {formatLatency(rec.jitterMs)}
                   </td>
-                    <td className="py-2.5 pl-4 text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                    <td className="py-3 pl-4 text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
                       {rec.ip ?? '—'}
                     </td>
                   </tr>

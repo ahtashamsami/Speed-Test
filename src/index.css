@@ -21,4 +21,9 @@
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
   }
+
+  a,
+  button {
+    touch-action: manipulation;
+  }
 }

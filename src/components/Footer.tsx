@@ -43,12 +43,12 @@ export const Footer = memo(function Footer({ activePage, onNavigate }: FooterPro
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-12 text-xs">
-            <div className="space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-7 sm:gap-12 text-xs">
+            <div className="space-y-1.5">
               <div className="font-semibold text-slate-800 dark:text-slate-200">
                 Company
               </div>
-              <ul className="space-y-1.5 text-slate-600 dark:text-slate-400">
+              <ul className="space-y-1 text-slate-600 dark:text-slate-400">
                 {companyLinks.map((link) => (
                   <li key={link.id}>
                     <a
@@ -57,7 +57,7 @@ export const Footer = memo(function Footer({ activePage, onNavigate }: FooterPro
                         e.preventDefault();
                         onNavigate(link.id);
                       }}
-                      className={`hover:text-slate-900 dark:hover:text-slate-100 transition-colors whitespace-nowrap ${
+                      className={`inline-flex items-center min-h-[34px] py-1.5 px-1.5 -mx-1.5 rounded-md hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/70 dark:hover:bg-slate-800/60 transition-colors whitespace-nowrap ${
                         activePage === link.id
                           ? 'text-sky-700 dark:text-sky-400 font-medium'
                           : ''
@@ -70,11 +70,11 @@ export const Footer = memo(function Footer({ activePage, onNavigate }: FooterPro
               </ul>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="font-semibold text-slate-800 dark:text-slate-200">
                 Legal &amp; Compliance
               </div>
-              <ul className="space-y-1.5 text-slate-600 dark:text-slate-400">
+              <ul className="space-y-1 text-slate-600 dark:text-slate-400">
                 {legalLinks.map((link) => (
                   <li key={link.id}>
                     <a
@@ -83,7 +83,7 @@ export const Footer = memo(function Footer({ activePage, onNavigate }: FooterPro
                         e.preventDefault();
                         onNavigate(link.id);
                       }}
-                      className={`hover:text-slate-900 dark:hover:text-slate-100 transition-colors whitespace-nowrap ${
+                      className={`inline-flex items-center min-h-[34px] py-1.5 px-1.5 -mx-1.5 rounded-md hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/70 dark:hover:bg-slate-800/60 transition-colors whitespace-nowrap ${
                         activePage === link.id
                           ? 'text-sky-700 dark:text-sky-400 font-medium'
                           : ''

@@ -33,7 +33,7 @@ function PageShell({
         <button
           type="button"
           onClick={onBackHome}
-          className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
+          className="inline-flex items-center gap-2 min-h-[38px] px-2.5 py-1.5 -ml-2.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
           <span>Back to Speed Test</span>
@@ -206,16 +206,16 @@ export function LegalAndInfoPages({
               <button
                 type="button"
                 onClick={() => copyContactDetail('+1 646 427 6802', 'phone')}
-                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                className="inline-flex items-center justify-center gap-1.5 min-h-[38px] min-w-[38px] px-3 py-1.5 text-xs font-medium rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
                 {copiedField === 'phone' ? (
                   <>
-                    <Check className="w-3 h-3 text-teal-600 dark:text-teal-400" aria-hidden="true" />
+                    <Check className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" aria-hidden="true" />
                     <span>Copied</span>
                   </>
                 ) : (
                   <>
-                    <Copy className="w-3 h-3" aria-hidden="true" />
+                    <Copy className="w-3.5 h-3.5" aria-hidden="true" />
                     <span>Copy</span>
                   </>
                 )}
@@ -228,7 +228,7 @@ export function LegalAndInfoPages({
               <MapPin className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" aria-hidden="true" />
               <span>Registered Office Address</span>
             </div>
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start justify-between gap-2.5">
               <address className="not-italic text-sm font-medium text-slate-900 dark:text-slate-100">
                 ECORZO LLC
                 <br />
@@ -241,16 +241,16 @@ export function LegalAndInfoPages({
                 onClick={() =>
                   copyContactDetail('224 W 35th St STE 500, New York NY, 10001', 'address')
                 }
-                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0 cursor-pointer"
+                className="inline-flex items-center justify-center gap-1.5 min-h-[38px] min-w-[38px] px-3 py-1.5 text-xs font-medium rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0 cursor-pointer"
               >
                 {copiedField === 'address' ? (
                   <>
-                    <Check className="w-3 h-3 text-teal-600 dark:text-teal-400" aria-hidden="true" />
+                    <Check className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" aria-hidden="true" />
                     <span>Copied</span>
                   </>
                 ) : (
                   <>
-                    <Copy className="w-3 h-3" aria-hidden="true" />
+                    <Copy className="w-3.5 h-3.5" aria-hidden="true" />
                     <span>Copy</span>
                   </>
                 )}
@@ -280,7 +280,7 @@ export function LegalAndInfoPages({
                 setContactEmail('');
                 setContactMessage('');
               }}
-              className="mt-1 text-xs font-medium text-sky-700 dark:text-sky-400 hover:underline cursor-pointer"
+              className="mt-1.5 inline-flex items-center min-h-[38px] px-2.5 py-1.5 -ml-2.5 rounded-lg text-xs font-medium text-sky-700 dark:text-sky-400 hover:bg-slate-100/70 dark:hover:bg-slate-800/60 hover:underline cursor-pointer"
             >
               Send another inquiry
             </button>
@@ -301,7 +301,7 @@ export function LegalAndInfoPages({
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
                   placeholder="Jane Doe"
-                  className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full min-h-[40px] px-3.5 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
 
@@ -318,7 +318,7 @@ export function LegalAndInfoPages({
                   value={contactEmail}
                   onChange={(e) => setContactEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full min-h-[40px] px-3.5 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
             </div>
@@ -348,7 +348,7 @@ export function LegalAndInfoPages({
 
             <button
               type="submit"
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-sky-600 hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-400 text-white dark:text-slate-950 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 min-h-[40px] px-4 py-2 text-sm font-medium rounded-lg bg-sky-600 hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-400 text-white dark:text-slate-950 transition-colors cursor-pointer"
             >
               <Mail className="w-4 h-4" aria-hidden="true" />
               <span>Submit Message</span>
@@ -672,25 +672,29 @@ export function LegalAndInfoPages({
             <button
               type="button"
               onClick={() => saveCookiePreference('all')}
-              className={`px-4 py-2 text-xs font-medium rounded-lg border transition-colors cursor-pointer ${
+              aria-pressed={cookiePref === 'all'}
+              className={`inline-flex items-center gap-2 min-h-[40px] px-4 py-2 text-xs font-medium rounded-lg bg-black text-white hover:bg-zinc-900 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                 cookiePref === 'all'
-                  ? 'bg-sky-600 border-sky-600 text-white dark:bg-sky-500 dark:border-sky-500 dark:text-slate-950'
-                  : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  ? 'border-2 border-sky-500 ring-2 ring-sky-500/30'
+                  : 'border border-black dark:border-zinc-700'
               }`}
             >
-              Accept All Functional Storage
+              {cookiePref === 'all' && <CheckCircle2 className="w-3.5 h-3.5 text-sky-400" aria-hidden="true" />}
+              <span>Accept All Functional Storage</span>
             </button>
 
             <button
               type="button"
               onClick={() => saveCookiePreference('essential')}
-              className={`px-4 py-2 text-xs font-medium rounded-lg border transition-colors cursor-pointer ${
+              aria-pressed={cookiePref === 'essential'}
+              className={`inline-flex items-center gap-2 min-h-[40px] px-4 py-2 text-xs font-medium rounded-lg bg-black text-white hover:bg-zinc-900 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                 cookiePref === 'essential'
-                  ? 'bg-slate-900 border-slate-900 text-white dark:bg-slate-100 dark:border-slate-100 dark:text-slate-900'
-                  : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  ? 'border-2 border-sky-500 ring-2 ring-sky-500/30'
+                  : 'border border-black dark:border-zinc-700'
               }`}
             >
-              Strictly Essential Only
+              {cookiePref === 'essential' && <CheckCircle2 className="w-3.5 h-3.5 text-sky-400" aria-hidden="true" />}
+              <span>Strictly Essential Only</span>
             </button>
           </div>
         </div>
