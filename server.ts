@@ -558,6 +558,66 @@ async function startServer() {
     res.status(200).send(txt);
   });
 
+  const WEB_MANIFEST_JSON = JSON.stringify(
+    {
+      name: 'TestLine — Internet Speed Test & IP Diagnostics',
+      short_name: 'TestLine',
+      description:
+        'Real-time internet speed benchmark (download, upload, ping, jitter) and full IPv4/IPv6, reverse DNS, DoH latency, and proxy/VPN diagnostics by ECORZO LLC.',
+      id: '/',
+      start_url: '/',
+      scope: '/',
+      display: 'standalone',
+      orientation: 'any',
+      background_color: '#070B12',
+      theme_color: '#070B12',
+      lang: 'en',
+      categories: ['utilities', 'productivity'],
+      icons: [
+        {
+          src: '/icon-192.png',
+          sizes: '192x192',
+          type: 'image/png',
+          purpose: 'any',
+        },
+        {
+          src: '/icon-192.png',
+          sizes: '192x192',
+          type: 'image/png',
+          purpose: 'maskable',
+        },
+        {
+          src: '/icon-512.png',
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'any',
+        },
+        {
+          src: '/icon-512.png',
+          sizes: '512x512',
+          type: 'image/png',
+          purpose: 'maskable',
+        },
+        {
+          src: '/favicon.svg',
+          sizes: 'any',
+          type: 'image/svg+xml',
+          purpose: 'any',
+        },
+      ],
+    },
+    null,
+    2
+  );
+
+  app.get(['/manifest.webmanifest', '/manifest.json'], (_req: Request, res: Response) => {
+    res.set({
+      'Content-Type': 'application/manifest+json; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600',
+    });
+    res.status(200).send(WEB_MANIFEST_JSON);
+  });
+
   app.get('/ads.txt', (_req: Request, res: Response) => {
     res.set({
       'Content-Type': 'text/plain; charset=utf-8',
@@ -752,6 +812,16 @@ async function startServer() {
       })
     );
     app.get('*', (req: Request, res: Response) => {
+      if (
+        req.path.startsWith('/api/') ||
+        req.path.startsWith('/.well-known/') ||
+        /\.(?:json|webmanifest|xml|txt|map|js|mjs|css|png|jpe?g|svg|ico|webp|woff2?)$/i.test(
+          req.path
+        )
+      ) {
+        res.status(404).json({ error: 'Not found' });
+        return;
+      }
       const origin = resolveBaseOrigin(req);
       const html = injectSeoIntoHtml(templateHtml, origin, req.path);
       res.set('Content-Type', 'text/html; charset=utf-8');
