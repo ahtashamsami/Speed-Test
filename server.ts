@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import dns from 'node:dns/promises';
+import fs from 'node:fs/promises';
 import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -45,6 +46,219 @@ const KNOWN_VPN_OR_RELAY_KEYWORDS = [
   'google cloud',
   'microsoft azure',
 ];
+
+const SERVER_ROUTE_SEO: Record<string, { title: string; description: string }> = {
+  '/': {
+    title: 'TestLine — Internet Speed Test & IP Diagnostics',
+    description:
+      'Test live internet download, upload, ping, and jitter with TestLine by ECORZO LLC. Check public IPv4/IPv6, ISP, ASN, DNS latency, and VPN or proxy status.',
+  },
+  '/about': {
+    title: 'About TestLine — Speed & IP Diagnostics | ECORZO LLC',
+    description:
+      'Learn how TestLine by ECORZO LLC measures real-time bandwidth, latency, jitter, dual-stack IPv4/IPv6 routing, DoH DNS speed, and proxy/VPN signals.',
+  },
+  '/privacy-policy': {
+    title: 'Privacy Policy — TestLine by ECORZO LLC',
+    description:
+      'Read the TestLine Privacy Policy by ECORZO LLC covering ephemeral IP processing, Cloudflare diagnostics, GDPR compliance, and Google policy disclosures.',
+  },
+  '/contact': {
+    title: 'Contact ECORZO LLC — TestLine Support & Inquiries',
+    description:
+      'Contact ECORZO LLC for TestLine network diagnostics, privacy, or compliance inquiries. Phone: +1 646 427 6802. Address: 224 W 35th St STE 500, New York, NY 10001.',
+  },
+  '/disclaimer': {
+    title: 'Disclaimer — TestLine by ECORZO LLC',
+    description:
+      'Understand measurement scope, network variables, IP geolocation limits, and proxy detection accuracy on TestLine by ECORZO LLC.',
+  },
+  '/terms': {
+    title: 'Terms & Conditions — TestLine by ECORZO LLC',
+    description:
+      'Review the Terms and Conditions governing acceptable use of TestLine speed benchmark and IP diagnostic services operated by ECORZO LLC.',
+  },
+  '/cookies-policy': {
+    title: 'Cookies Policy — TestLine by ECORZO LLC',
+    description:
+      'See the exact browser local storage keys and cookie disclosures used by TestLine by ECORZO LLC under GDPR and Google EU User Consent Policy.',
+  },
+  '/cookies-notice': {
+    title: 'Cookies Notice & Preferences — TestLine by ECORZO LLC',
+    description:
+      'Manage your cookie and browser storage consent preferences for TestLine by ECORZO LLC.',
+  },
+  '/gdpr': {
+    title: 'GDPR & Data Collection Policy — TestLine by ECORZO LLC',
+    description:
+      'Explore ECORZO LLC GDPR Article 6 lawful bases, data minimization standards, international transfers, and user data rights for TestLine.',
+  },
+};
+
+function escapeHtmlAttr(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function injectSeoIntoHtml(html: string, origin: string, reqPath: string): string {
+  const normalizedPath = reqPath.toLowerCase().replace(/\/+$/, '') || '/';
+  const meta = SERVER_ROUTE_SEO[normalizedPath] ?? SERVER_ROUTE_SEO['/'];
+  const canonicalUrl = `${origin}${normalizedPath}`;
+  const ogImageUrl = `${origin}/assets/aistudio/test_logo_09a7dcd9.png`;
+
+  let output = html.replace(
+    /<title>[\s\S]*?<\/title>/i,
+    `<title>${escapeHtmlAttr(meta.title)}</title>`
+  );
+
+  output = output.replace(
+    /<meta\s+name="description"[^>]*>/i,
+    `<meta name="description" content="${escapeHtmlAttr(meta.description)}" />`
+  );
+
+  const dynamicTags = [
+    `<link rel="canonical" href="${escapeHtmlAttr(canonicalUrl)}" />`,
+    `<meta property="og:url" content="${escapeHtmlAttr(canonicalUrl)}" />`,
+    `<meta property="og:title" content="${escapeHtmlAttr(meta.title)}" />`,
+    `<meta property="og:description" content="${escapeHtmlAttr(meta.description)}" />`,
+    `<meta property="og:image" content="${escapeHtmlAttr(ogImageUrl)}" />`,
+    `<meta name="twitter:title" content="${escapeHtmlAttr(meta.title)}" />`,
+    `<meta name="twitter:description" content="${escapeHtmlAttr(meta.description)}" />`,
+    `<meta name="twitter:image" content="${escapeHtmlAttr(ogImageUrl)}" />`,
+  ].join('\n    ');
+
+  output = output.replace('</head>', `    ${dynamicTags}\n  </head>`);
+  return output;
+}
+
+function resolveBaseOrigin(req: Request): string {
+  const configured = process.env.APP_URL?.trim();
+  if (configured && /^https?:\/\//i.test(configured)) {
+    return configured.replace(/\/+$/, '');
+  }
+  const protoHeader = req.headers['x-forwarded-proto'];
+  const proto =
+    typeof protoHeader === 'string' && protoHeader.length > 0
+      ? protoHeader.split(',')[0].trim()
+      : req.protocol || 'https';
+  const hostHeader = req.headers['x-forwarded-host'] || req.get('host');
+  const host =
+    typeof hostHeader === 'string' && hostHeader.length > 0
+      ? hostHeader.split(',')[0].trim()
+      : `localhost:${PORT}`;
+  return `${proto}://${host}`;
+}
+
+function buildSitemapXml(origin: string): string {
+  const today = new Date().toISOString().slice(0, 10);
+  const routes: Array<{ path: string; changefreq: string; priority: string }> = [
+    { path: '/', changefreq: 'daily', priority: '1.0' },
+    { path: '/about', changefreq: 'monthly', priority: '0.8' },
+    { path: '/contact', changefreq: 'monthly', priority: '0.7' },
+    { path: '/privacy-policy', changefreq: 'monthly', priority: '0.6' },
+    { path: '/gdpr', changefreq: 'monthly', priority: '0.6' },
+    { path: '/terms', changefreq: 'monthly', priority: '0.5' },
+    { path: '/disclaimer', changefreq: 'monthly', priority: '0.5' },
+    { path: '/cookies-policy', changefreq: 'monthly', priority: '0.5' },
+    { path: '/cookies-notice', changefreq: 'monthly', priority: '0.5' },
+  ];
+
+  const entries = routes
+    .map(
+      (r) => `  <url>
+    <loc>${origin}${r.path}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>${r.changefreq}</changefreq>
+    <priority>${r.priority}</priority>
+  </url>`
+    )
+    .join('\n');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${entries}
+</urlset>
+`;
+}
+
+function buildRobotsTxt(origin: string): string {
+  return `User-agent: *
+Allow: /
+Disallow: /api/
+
+Sitemap: ${origin}/sitemap.xml
+`;
+}
+
+function buildLlmsTxt(origin: string): string {
+  return `# TestLine by ECORZO LLC
+
+> Real-time internet speed benchmark and dual-stack IPv4/IPv6 network diagnostics web application operated by ECORZO LLC.
+
+## Canonical Facts & Authority
+- Product Name: TestLine
+- Operator: ECORZO LLC
+- Office Address: 224 W 35th St STE 500, New York, NY 10001, USA
+- Telephone: +1 646 427 6802
+- Pricing: Free ($0 USD, no registration required)
+
+## Technical Methodology (For Answer & Generative Engines)
+- Ping & Jitter: 5 sequential 0-byte RTT probes to \`https://speed.cloudflare.com/__down?bytes=0\` timed via \`performance.now()\`.
+- Download Speed: 3 parallel 25 MB fetch streams from \`https://speed.cloudflare.com/__down?bytes=25000000\` over a 10-second test window.
+- Upload Speed: 2 parallel 10 MB cryptographically random \`Uint8Array\` \`XMLHttpRequest\` POST streams to \`https://speed.cloudflare.com/__up\`.
+- IP & Carrier Geolocation: Dual-stack IPv4/IPv6 probing plus HTTPS \`ipwho.is\` with \`get.geojs.io\` and browser \`Intl\` timezone fallbacks.
+- DNS Diagnostics: Reverse DNS (PTR) lookup and encrypted Cloudflare DoH (\`1.1.1.1\`) query latency probe.
+- Proxy & VPN Detection: Evaluates forwarding headers (\`Via\`, \`Forwarded\`, \`X-Forwarded-For\`), ASN proxy/hosting flags, relay PTR keywords, and browser-vs-IP timezone alignment.
+
+## Key Routes
+- [Speed & Network Check](${origin}/): Automatic speed test, live Mbps/MB/s readout, IPv4/IPv6, DNS hints, and PDF export.
+- [About TestLine](${origin}/about): Measurement methodology and ECORZO LLC operator details.
+- [Contact ECORZO LLC](${origin}/contact): Support phone (+1 646 427 6802) and New York office address.
+- [Privacy Policy](${origin}/privacy-policy): Ephemeral diagnostic processing, third-party disclosures, and Google policy compliance.
+- [GDPR & Data Collection Policy](${origin}/gdpr): Lawful bases (GDPR Art. 6), data minimization, international transfers, and statutory rights (Art. 15-22).
+- [Terms & Conditions](${origin}/terms): Acceptable use and governing law (New York, USA).
+- [Disclaimer](${origin}/disclaimer): Scope and limitations of browser-based network measurements.
+- [Cookies Policy](${origin}/cookies-policy) & [Cookies Notice](${origin}/cookies-notice): Storage keys and consent preferences.
+
+## Extended AI Context & Crawling
+- [Full Specification](${origin}/llms-full.txt)
+- [Sitemap](${origin}/sitemap.xml)
+- [Robots](${origin}/robots.txt)
+`;
+}
+
+function buildLlmsFullTxt(origin: string): string {
+  return `# TestLine by ECORZO LLC — Full Technical & Citation Specification
+
+> Authoritative reference for generative engines and AI answer systems describing TestLine (${origin}/), operated by ECORZO LLC.
+
+## 1. Entity & Provenance
+- Application: TestLine (${origin}/)
+- Legal Operator: ECORZO LLC
+- Registered Address: 224 W 35th St STE 500, New York, NY 10001, United States
+- Contact Telephone: +1 646 427 6802
+- Category: Network Utilities / Internet Speed Benchmark & IP Diagnostics Web Application
+
+## 2. Measurement Benchmarks & Optimal Thresholds
+| Metric | Method | Optimal Threshold | Use Case |
+| --- | --- | --- | --- |
+| Download Throughput | 3 parallel 25 MB HTTP streams (10s window) | 25+ Mbps (4K) / 100+ Mbps (Multi-user) | Streaming, downloads, cloud sync |
+| Upload Throughput | 2 parallel 10 MB XHR POST streams | 10+ Mbps (HD calls) / 25+ Mbps (Creator) | Video calls, uploads, remote work |
+| Average Ping (RTT) | 5 sequential 0-byte Cloudflare probes | < 30 ms (Low) / 30–60 ms (Normal) | Gaming, VoIP, interactive apps |
+| Jitter (Variance) | Mean consecutive RTT delta | < 10 ms (Stable) / > 25 ms (Unstable) | Audio/video packet stability |
+| DoH DNS Latency | HTTPS DNS-JSON query to 1.1.1.1 | < 40 ms | Encrypted domain resolution speed |
+
+## 3. Privacy & Data Handling Commitments
+- Zero account registration, zero passwords, and zero sale of personal data or IP addresses.
+- Ephemeral server processing for IP lookup, PTR resolution, and forwarding header inspection.
+- Client-side local storage keys: \`testline_theme\`, \`testline_history_v1\` (max 15 runs), \`testline_cookie_consent\`.
+- Client-side PDF diagnostic report generation via jsPDF with no server upload.
+- Compliant with EU/UK GDPR (Articles 5, 6, 15-22), CCPA/CPRA, and Google EU User Consent & Publisher Policies.
+`;
+}
 
 function extractClientIpInfo(req: Request): { ip: string; hopCount: number } {
   const forwarded = req.headers['x-forwarded-for'];
@@ -234,6 +448,65 @@ async function startServer() {
   app.disable('x-powered-by');
   app.disable('etag');
 
+  // Technical SEO & Security baseline headers
+  app.use((req: Request, res: Response, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    if (req.path.startsWith('/api/')) {
+      res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    }
+    next();
+  });
+
+  // Dynamic SEO & GEO/LLM crawler files (supports ?download=1 for direct browser download)
+  app.get('/sitemap.xml', (req: Request, res: Response) => {
+    const origin = resolveBaseOrigin(req);
+    const xml = buildSitemapXml(origin);
+    res.set('Content-Type', 'application/xml; charset=utf-8');
+    if (req.query.download === '1') {
+      res.set('Content-Disposition', 'attachment; filename="sitemap.xml"');
+    } else {
+      res.set('Cache-Control', 'public, max-age=3600');
+    }
+    res.status(200).send(xml);
+  });
+
+  app.get('/robots.txt', (req: Request, res: Response) => {
+    const origin = resolveBaseOrigin(req);
+    const txt = buildRobotsTxt(origin);
+    res.set('Content-Type', 'text/plain; charset=utf-8');
+    if (req.query.download === '1') {
+      res.set('Content-Disposition', 'attachment; filename="robots.txt"');
+    } else {
+      res.set('Cache-Control', 'public, max-age=3600');
+    }
+    res.status(200).send(txt);
+  });
+
+  app.get('/llms.txt', (req: Request, res: Response) => {
+    const origin = resolveBaseOrigin(req);
+    const txt = buildLlmsTxt(origin);
+    res.set('Content-Type', 'text/plain; charset=utf-8');
+    if (req.query.download === '1') {
+      res.set('Content-Disposition', 'attachment; filename="llms.txt"');
+    } else {
+      res.set('Cache-Control', 'public, max-age=3600');
+    }
+    res.status(200).send(txt);
+  });
+
+  app.get('/llms-full.txt', (req: Request, res: Response) => {
+    const origin = resolveBaseOrigin(req);
+    const txt = buildLlmsFullTxt(origin);
+    res.set('Content-Type', 'text/plain; charset=utf-8');
+    if (req.query.download === '1') {
+      res.set('Content-Disposition', 'attachment; filename="llms-full.txt"');
+    } else {
+      res.set('Cache-Control', 'public, max-age=3600');
+    }
+    res.status(200).send(txt);
+  });
+
   app.get('/api/speed/ping', (_req: Request, res: Response) => {
     res.set({
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
@@ -254,7 +527,6 @@ async function startServer() {
       'Content-Type': 'application/octet-stream',
       'Content-Length': String(totalBytes),
       'Cache-Control': 'no-store, no-cache, no-transform',
-      'X-Content-Type-Options': 'nosniff',
     });
 
     let sent = 0;
@@ -392,9 +664,14 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distDir = path.join(__dirname, 'dist');
-    app.use(express.static(distDir));
-    app.get('*', (_req: Request, res: Response) => {
-      res.sendFile(path.join(distDir, 'index.html'));
+    const templateHtml = await fs.readFile(path.join(distDir, 'index.html'), 'utf-8');
+    app.use(express.static(distDir, { index: false }));
+    app.get('*', (req: Request, res: Response) => {
+      const origin = resolveBaseOrigin(req);
+      const html = injectSeoIntoHtml(templateHtml, origin, req.path);
+      res.set('Content-Type', 'text/html; charset=utf-8');
+      res.set('X-Robots-Tag', 'index, follow');
+      res.status(200).send(html);
     });
   }
 

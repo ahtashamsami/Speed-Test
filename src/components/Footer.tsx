@@ -1,11 +1,13 @@
-import type { AppPage } from './TopBar';
+import { Download } from 'lucide-react';
+import { memo } from 'react';
+import { PAGE_PATHS, type AppPage } from './TopBar';
 
 interface FooterProps {
   activePage: AppPage;
   onNavigate: (page: AppPage) => void;
 }
 
-export function Footer({ activePage, onNavigate }: FooterProps) {
+export const Footer = memo(function Footer({ activePage, onNavigate }: FooterProps) {
   const legalLinks: Array<{ id: AppPage; label: string }> = [
     { id: 'disclaimer', label: 'Disclaimer' },
     { id: 'terms', label: 'Terms & Conditions' },
@@ -21,11 +23,18 @@ export function Footer({ activePage, onNavigate }: FooterProps) {
     { id: 'contact', label: 'Contact' },
   ];
 
+  const seoFiles = [
+    { label: 'sitemap.xml', href: '/sitemap.xml?download=1', filename: 'sitemap.xml' },
+    { label: 'robots.txt', href: '/robots.txt?download=1', filename: 'robots.txt' },
+    { label: 'llms.txt', href: '/llms.txt?download=1', filename: 'llms.txt' },
+    { label: 'llms-full.txt', href: '/llms-full.txt?download=1', filename: 'llms-full.txt' },
+  ];
+
   return (
     <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B111C] mt-12">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
-          <div className="space-y-1.5">
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-8">
+          <div className="space-y-2">
             <div className="flex items-baseline gap-1.5">
               <span className="font-display text-base font-bold text-slate-900 dark:text-slate-100">
                 TestLine
@@ -34,7 +43,7 @@ export function Footer({ activePage, onNavigate }: FooterProps) {
                 by ECORZO LLC
               </span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed">
               Real-time internet speed benchmark and dual-stack IP network diagnostics operated by ECORZO LLC.
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
@@ -42,7 +51,7 @@ export function Footer({ activePage, onNavigate }: FooterProps) {
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-6 sm:gap-10 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-xs">
             <div className="space-y-2">
               <div className="font-semibold text-slate-800 dark:text-slate-200">
                 Company
@@ -51,7 +60,7 @@ export function Footer({ activePage, onNavigate }: FooterProps) {
                 {companyLinks.map((link) => (
                   <li key={link.id}>
                     <a
-                      href={`#${link.id === 'home' ? 'speed-test' : link.id}`}
+                      href={PAGE_PATHS[link.id]}
                       onClick={(e) => {
                         e.preventDefault();
                         onNavigate(link.id);
@@ -73,11 +82,11 @@ export function Footer({ activePage, onNavigate }: FooterProps) {
               <div className="font-semibold text-slate-800 dark:text-slate-200">
                 Legal &amp; Compliance
               </div>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-slate-600 dark:text-slate-400">
+              <ul className="space-y-1.5 text-slate-600 dark:text-slate-400">
                 {legalLinks.map((link) => (
                   <li key={link.id}>
                     <a
-                      href={`#${link.id}`}
+                      href={PAGE_PATHS[link.id]}
                       onClick={(e) => {
                         e.preventDefault();
                         onNavigate(link.id);
@@ -89,6 +98,26 @@ export function Footer({ activePage, onNavigate }: FooterProps) {
                       }`}
                     >
                       {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <div className="font-semibold text-slate-800 dark:text-slate-200">
+                Search Console &amp; AI Crawlers
+              </div>
+              <ul className="space-y-1.5 text-slate-600 dark:text-slate-400">
+                {seoFiles.map((file) => (
+                  <li key={file.filename}>
+                    <a
+                      href={file.href}
+                      download={file.filename}
+                      className="inline-flex items-center gap-1.5 font-mono hover:text-slate-900 dark:hover:text-slate-100 transition-colors whitespace-nowrap"
+                    >
+                      <Download className="w-3 h-3 text-sky-600 dark:text-sky-400" aria-hidden="true" />
+                      <span>{file.label}</span>
                     </a>
                   </li>
                 ))}
@@ -108,4 +137,4 @@ export function Footer({ activePage, onNavigate }: FooterProps) {
       </div>
     </footer>
   );
-}
+});

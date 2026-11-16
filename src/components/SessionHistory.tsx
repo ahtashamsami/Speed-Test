@@ -1,4 +1,5 @@
 import { Trash2 } from 'lucide-react';
+import { memo } from 'react';
 import type { SpeedUnit, TestRunRecord } from '../types/network';
 import { formatLatency, formatThroughput, formatTimeShort } from '../utils/formatters';
 
@@ -8,7 +9,11 @@ interface SessionHistoryProps {
   onClear: () => void;
 }
 
-export function SessionHistory({ records, unit, onClear }: SessionHistoryProps) {
+export const SessionHistory = memo(function SessionHistory({
+  records,
+  unit,
+  onClear,
+}: SessionHistoryProps) {
   return (
     <section
       id="history"
@@ -87,4 +92,4 @@ export function SessionHistory({ records, unit, onClear }: SessionHistoryProps) 
       )}
     </section>
   );
-}
+});

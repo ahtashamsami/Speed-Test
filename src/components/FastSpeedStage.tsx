@@ -1,4 +1,5 @@
 import { Activity, AlertTriangle, CheckCircle2, RotateCw, Square } from 'lucide-react';
+import { memo, useMemo } from 'react';
 import type { SpeedMetrics, SpeedUnit } from '../types/network';
 import { formatLatency, formatThroughput } from '../utils/formatters';
 
@@ -9,7 +10,7 @@ interface FastSpeedStageProps {
   onStopTest: () => void;
 }
 
-export function FastSpeedStage({
+export const FastSpeedStage = memo(function FastSpeedStage({
   metrics,
   unit,
   onStartTest,
@@ -18,14 +19,41 @@ export function FastSpeedStage({
   const isRunning =
     metrics.phase === 'ping' || metrics.phase === 'download' || metrics.phase === 'upload';
 
-  const heroSpeed =
-    metrics.downloadMbps !== null ? formatThroughput(metrics.downloadMbps, unit) : '0.0';
+  const heroSpeed = useMemo(
+    () => (metrics.downloadMbps !== null ? formatThroughput(metrics.downloadMbps, unit) : '0.0'),
+    [metrics.downloadMbps, unit]
+  );
+
+  const uploadFormatted = useMemo(
+    () => formatThroughput(metrics.uploadMbps, unit),
+    [metrics.uploadMbps, unit]
+  );
+
+  const peakUploadFormatted = useMemo(
+    () =>
+      metrics.peakUploadMbps !== null
+        ? `Peak ${formatThroughput(metrics.peakUploadMbps, unit)} ${unit}`
+        : '2 parallel streams',
+    [metrics.peakUploadMbps, unit]
+  );
+
+  const pingFormatted = useMemo(() => formatLatency(metrics.pingMs), [metrics.pingMs]);
+
+  const pingSubLabel = useMemo(
+    () =>
+      metrics.minPingMs !== null
+        ? `Min ${formatLatency(metrics.minPingMs)} ms · ${metrics.pingSamples.length} probes`
+        : '5 Cloudflare RTT probes',
+    [metrics.minPingMs, metrics.pingSamples.length]
+  );
+
+  const jitterFormatted = useMemo(() => formatLatency(metrics.jitterMs), [metrics.jitterMs]);
 
   const isHeroMuted =
     metrics.downloadMbps === null &&
     (metrics.phase === 'idle' || metrics.phase === 'ping');
 
-  const statusText = (() => {
+  const statusText = useMemo(() => {
     switch (metrics.phase) {
       case 'ping':
         return 'Measuring ping & jitter...';
@@ -42,7 +70,7 @@ export function FastSpeedStage({
       default:
         return 'Preparing test...';
     }
-  })();
+  }, [metrics.phase]);
 
   return (
     <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] px-6 py-10 sm:px-10 sm:py-12">
@@ -161,22 +189,20 @@ export function FastSpeedStage({
                     : 'text-slate-900 dark:text-slate-100'
                 }`}
               >
-                {formatThroughput(metrics.uploadMbps, unit)}
+                {uploadFormatted}
               </span>
               <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                 {unit}
               </span>
             </div>
             <p className="mt-1 font-mono text-xs text-slate-500 dark:text-slate-400">
-              {metrics.peakUploadMbps !== null
-                ? `Peak ${formatThroughput(metrics.peakUploadMbps, unit)} ${unit}`
-                : '2 parallel streams'}
+              {peakUploadFormatted}
             </p>
           </div>
 
           <div className="py-3 sm:py-0 sm:px-6">
             <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
-              Latency (Ping)
+              Latency (Average Ping)
             </div>
             <div className="mt-1.5 flex items-baseline sm:justify-center gap-1.5">
               <span
@@ -186,16 +212,14 @@ export function FastSpeedStage({
                     : 'text-slate-900 dark:text-slate-100'
                 }`}
               >
-                {formatLatency(metrics.pingMs)}
+                {pingFormatted}
               </span>
               <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                 ms
               </span>
             </div>
             <p className="mt-1 font-mono text-xs text-slate-500 dark:text-slate-400">
-              {metrics.minPingMs !== null
-                ? `Min ${formatLatency(metrics.minPingMs)} ms · ${metrics.pingSamples.length} probes`
-                : '5 Cloudflare RTT probes'}
+              {pingSubLabel}
             </p>
           </div>
 
@@ -211,7 +235,7 @@ export function FastSpeedStage({
                     : 'text-slate-900 dark:text-slate-100'
                 }`}
               >
-                {formatLatency(metrics.jitterMs)}
+                {jitterFormatted}
               </span>
               <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
                 ms
@@ -227,4 +251,4 @@ export function FastSpeedStage({
       </div>
     </div>
   );
-}
+});

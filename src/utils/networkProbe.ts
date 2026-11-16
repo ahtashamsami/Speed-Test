@@ -83,6 +83,10 @@ interface NetworkInformationLike {
   saveData?: boolean;
 }
 
+const DIAGNOSTICS_CACHE_TTL_MS = 60_000;
+let cachedDiagnostics: { data: NetworkDiagnostics; expiresAt: number } | null = null;
+let inFlightDiagnosticsPromise: Promise<NetworkDiagnostics> | null = null;
+
 async function fetchJsonWithTimeout<T>(
   url: string,
   timeoutMs: number,
@@ -102,7 +106,6 @@ async function fetchJsonWithTimeout<T>(
 }
 
 async function fetchClientGeoMetadata(): Promise<ClientGeoResult> {
-  // Primary: https://ipwho.is/ (HTTPS + CORS without API key)
   const ipWho = await fetchJsonWithTimeout<IpWhoIsResponse>('https://ipwho.is/', 3500);
   if (ipWho && ipWho.success !== false) {
     const ispValue = ipWho.connection?.isp || ipWho.isp || ipWho.connection?.org || ipWho.org || null;
@@ -125,7 +128,6 @@ async function fetchClientGeoMetadata(): Promise<ClientGeoResult> {
     };
   }
 
-  // Fallback: https://get.geojs.io/v1/ip/geo.json (HTTPS + CORS without API key)
   const geoJs = await fetchJsonWithTimeout<GeoJsResponse>(
     'https://get.geojs.io/v1/ip/geo.json',
     3500
@@ -285,7 +287,7 @@ function buildProxyDetection(
   };
 }
 
-export async function fetchNetworkDiagnostics(): Promise<NetworkDiagnostics> {
+async function executeDiagnosticsFetch(): Promise<NetworkDiagnostics> {
   const [clientGeo, serverInfo, ipv4Probe, ipv6Probe, dohProbe] = await Promise.all([
     fetchClientGeoMetadata(),
     fetchJsonWithTimeout<ServerNetworkResponse>('/api/network-info', 4500),
@@ -363,4 +365,41 @@ export async function fetchNetworkDiagnostics(): Promise<NetworkDiagnostics> {
     error: hasError ? 'Unable to reach IP diagnostics endpoints.' : null,
     lastUpdatedAt: Date.now(),
   };
+}
+
+/**
+ * Memoized + deduplicated network diagnostic fetcher.
+ * Reuses in-flight promises and a 60-second TTL cache unless forceRefresh is true.
+ */
+export async function fetchNetworkDiagnostics(
+  options: { forceRefresh?: boolean } = {}
+): Promise<NetworkDiagnostics> {
+  const { forceRefresh = false } = options;
+
+  if (!forceRefresh && cachedDiagnostics && Date.now() < cachedDiagnostics.expiresAt) {
+    return cachedDiagnostics.data;
+  }
+
+  if (!forceRefresh && inFlightDiagnosticsPromise) {
+    return inFlightDiagnosticsPromise;
+  }
+
+  const promise = executeDiagnosticsFetch()
+    .then((result) => {
+      if (!result.error) {
+        cachedDiagnostics = {
+          data: result,
+          expiresAt: Date.now() + DIAGNOSTICS_CACHE_TTL_MS,
+        };
+      }
+      return result;
+    })
+    .finally(() => {
+      if (inFlightDiagnosticsPromise === promise) {
+        inFlightDiagnosticsPromise = null;
+      }
+    });
+
+  inFlightDiagnosticsPromise = promise;
+  return promise;
 }

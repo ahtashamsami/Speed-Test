@@ -14,12 +14,79 @@ interface PdfReportInput {
   history: TestRunRecord[];
 }
 
-export function exportNetworkReportPdf({
+const BRAND_LOGO_PATH = '/assets/aistudio/test_logo_09a7dcd9.png';
+
+async function loadTrimmedLogoDataUrl(
+  src: string
+): Promise<{ dataUrl: string; aspectRatio: number } | null> {
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.crossOrigin = 'anonymous';
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('Logo load failed'));
+      image.src = src;
+    });
+
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    if (!w || !h) return null;
+
+    const srcCanvas = document.createElement('canvas');
+    srcCanvas.width = w;
+    srcCanvas.height = h;
+    const srcCtx = srcCanvas.getContext('2d');
+    if (!srcCtx) return null;
+    srcCtx.drawImage(img, 0, 0);
+
+    // Crop outer transparent padding so logo renders crisply inside PDF header badge
+    const pixels = srcCtx.getImageData(0, 0, w, h).data;
+    let minX = w;
+    let minY = h;
+    let maxX = 0;
+    let maxY = 0;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const alpha = pixels[(y * w + x) * 4 + 3];
+        if (alpha > 12) {
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+
+    if (maxX <= minX || maxY <= minY) {
+      return { dataUrl: srcCanvas.toDataURL('image/png'), aspectRatio: w / h };
+    }
+
+    const cropW = maxX - minX + 1;
+    const cropH = maxY - minY + 1;
+    const outCanvas = document.createElement('canvas');
+    outCanvas.width = cropW;
+    outCanvas.height = cropH;
+    const outCtx = outCanvas.getContext('2d');
+    if (!outCtx) return null;
+    outCtx.drawImage(srcCanvas, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
+
+    return {
+      dataUrl: outCanvas.toDataURL('image/png'),
+      aspectRatio: cropW / cropH,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function exportNetworkReportPdf({
   metrics,
   network,
   unit,
   history,
-}: PdfReportInput): void {
+}: PdfReportInput): Promise<void> {
+  const logoAsset = await loadTrimmedLogoDataUrl(BRAND_LOGO_PATH);
+
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -30,7 +97,7 @@ export function exportNetworkReportPdf({
   const pageHeight = doc.internal.pageSize.getHeight();
   const marginX = 16;
   const contentWidth = pageWidth - marginX * 2;
-  let cursorY = 18;
+  let cursorY = 16;
 
   const ensureSpace = (neededMm: number) => {
     if (cursorY + neededMm > pageHeight - 18) {
@@ -39,19 +106,34 @@ export function exportNetworkReportPdf({
     }
   };
 
-  // Header
+  // Header with embedded brand logo badge on the right
+  if (logoAsset) {
+    const logoH = 11.5;
+    const logoW = Math.min(logoH * logoAsset.aspectRatio, 44);
+    const padX = 3;
+    const padY = 2;
+    const boxW = logoW + padX * 2;
+    const boxH = logoH + padY * 2;
+    const boxX = pageWidth - marginX - boxW;
+    const boxY = cursorY - 4;
+
+    doc.setFillColor(15, 23, 42);
+    doc.roundedRect(boxX, boxY, boxW, boxH, 2, 2, 'F');
+    doc.addImage(logoAsset.dataUrl, 'PNG', boxX + padX, boxY + padY, logoW, logoH);
+  }
+
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(18);
+  doc.setFontSize(17);
   doc.setTextColor(15, 23, 42);
-  doc.text('TestLine Network & Speed Diagnostic Report', marginX, cursorY);
-  cursorY += 6;
+  doc.text('TestLine Network & Speed Report', marginX, cursorY + 2);
+  cursorY += 7.5;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
   doc.setTextColor(100, 116, 139);
   const generatedStr = new Date().toLocaleString();
-  doc.text(`Generated: ${generatedStr}  ·  Unit: ${unit}`, marginX, cursorY);
-  cursorY += 4;
+  doc.text(`Generated: ${generatedStr}  ·  Unit: ${unit}  ·  ECORZO LLC`, marginX, cursorY);
+  cursorY += 6;
 
   doc.setDrawColor(203, 213, 225);
   doc.setLineWidth(0.35);
@@ -83,7 +165,7 @@ export function exportNetworkReportPdf({
           : 'Sustained stream',
     },
     {
-      label: 'Median Ping',
+      label: 'Average Ping',
       value: `${formatLatency(metrics.pingMs)} ms`,
       sub:
         metrics.minPingMs !== null
@@ -289,7 +371,7 @@ export function exportNetworkReportPdf({
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
     doc.text(
-      `TestLine Diagnostic Report  ·  Page ${p} of ${pageCount}`,
+      `TestLine by ECORZO LLC  ·  Page ${p} of ${pageCount}`,
       marginX,
       pageHeight - 10
     );

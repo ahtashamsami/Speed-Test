@@ -1,5 +1,5 @@
 import { Check, Copy, RefreshCw } from 'lucide-react';
-import { useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import type { NetworkDiagnostics } from '../types/network';
 import { formatTimeShort } from '../utils/formatters';
 
@@ -68,15 +68,16 @@ function DiagnosticRow({ label, children }: { label: string; children: React.Rea
   );
 }
 
-export function NetworkDiagnosticsSection({
+export const NetworkDiagnosticsSection = memo(function NetworkDiagnosticsSection({
   network,
   onRefresh,
 }: NetworkDiagnosticsSectionProps) {
   const [heroCopied, setHeroCopied] = useState(false);
 
-  const locationSummary = [network.city, network.region, network.country]
-    .filter(Boolean)
-    .join(', ');
+  const locationSummary = useMemo(
+    () => [network.city, network.region, network.country].filter(Boolean).join(', '),
+    [network.city, network.region, network.country]
+  );
 
   const copyPrimaryIp = async () => {
     if (!network.primaryIp) return;
@@ -330,4 +331,4 @@ export function NetworkDiagnosticsSection({
       </div>
     </section>
   );
-}
+});

@@ -1,20 +1,22 @@
 import { ShieldAlert } from 'lucide-react';
+import { memo, useMemo } from 'react';
 import type { NetworkDiagnostics } from '../types/network';
 
 interface ProxyVpnCardProps {
   network: NetworkDiagnostics;
 }
 
-export function ProxyVpnCard({ network }: ProxyVpnCardProps) {
+export const ProxyVpnCard = memo(function ProxyVpnCard({ network }: ProxyVpnCardProps) {
   const { proxyDetection } = network;
+
+  const locationLabel = useMemo(
+    () => [network.city, network.region, network.country].filter(Boolean).join(', '),
+    [network.city, network.region, network.country]
+  );
 
   if (network.loading || !proxyDetection.detected) {
     return null;
   }
-
-  const locationLabel = [network.city, network.region, network.country]
-    .filter(Boolean)
-    .join(', ');
 
   return (
     <section
@@ -91,4 +93,4 @@ export function ProxyVpnCard({ network }: ProxyVpnCardProps) {
       </div>
     </section>
   );
-}
+});

@@ -1,5 +1,5 @@
-import { Play, Square } from 'lucide-react';
-import type { SpeedPhase } from '../types/network';
+import { Square } from 'lucide-react';
+import { memo } from 'react';
 
 export type AppPage =
   | 'home'
@@ -12,23 +12,31 @@ export type AppPage =
   | 'cookies-notice'
   | 'gdpr';
 
+export const PAGE_PATHS: Record<AppPage, string> = {
+  home: '/',
+  about: '/about',
+  privacy: '/privacy-policy',
+  contact: '/contact',
+  disclaimer: '/disclaimer',
+  terms: '/terms',
+  'cookies-policy': '/cookies-policy',
+  'cookies-notice': '/cookies-notice',
+  gdpr: '/gdpr',
+};
+
 interface TopBarProps {
-  phase: SpeedPhase;
+  isRunning: boolean;
   activePage: AppPage;
   onNavigate: (page: AppPage) => void;
-  onStartTest: () => void;
   onStopTest: () => void;
 }
 
-export function TopBar({
-  phase,
+export const TopBar = memo(function TopBar({
+  isRunning,
   activePage,
   onNavigate,
-  onStartTest,
   onStopTest,
 }: TopBarProps) {
-  const isRunning = phase === 'ping' || phase === 'download' || phase === 'upload';
-
   const navItems: Array<{ id: AppPage; label: string }> = [
     { id: 'home', label: 'Speed Test' },
     { id: 'about', label: 'About' },
@@ -36,34 +44,24 @@ export function TopBar({
     { id: 'contact', label: 'Contact' },
   ];
 
-  const handlePrimaryAction = () => {
-    if (isRunning) {
-      onStopTest();
-    } else {
-      if (activePage !== 'home') {
-        onNavigate('home');
-      }
-      onStartTest();
-    }
-  };
-
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-[#070B12]/95 backdrop-blur-sm">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 min-h-24 flex items-center justify-between gap-8">
         <a
-          href="#speed-test"
+          href={PAGE_PATHS.home}
           onClick={(e) => {
             e.preventDefault();
             onNavigate('home');
           }}
-          className="inline-flex items-baseline gap-1.5 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 rounded"
+          aria-label="TestLine Home"
+          className="inline-flex items-center whitespace-nowrap shrink-0 rounded-lg bg-slate-900 dark:bg-transparent px-3 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
         >
-          <span className="font-display text-lg font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            TestLine
-          </span>
-          <span className="text-[11px] font-normal tracking-wide text-slate-500 dark:text-slate-400">
-            by ECORZO LLC
-          </span>
+          <img
+            src="/assets/aistudio/test_logo_09a7dcd9.png"
+            alt="TestLine logo"
+            referrerPolicy="no-referrer"
+            className="h-[72px] sm:h-20 w-auto object-contain select-none"
+          />
         </a>
 
         <nav
@@ -75,7 +73,7 @@ export function TopBar({
             return (
               <a
                 key={item.id}
-                href={`#${item.id === 'home' ? 'speed-test' : item.id}`}
+                href={PAGE_PATHS[item.id]}
                 onClick={(e) => {
                   e.preventDefault();
                   onNavigate(item.id);
@@ -93,24 +91,15 @@ export function TopBar({
           })}
         </nav>
 
-        <div className="shrink-0">
-          {isRunning ? (
+        <div className="shrink-0 min-w-[2px]">
+          {isRunning && (
             <button
               type="button"
-              onClick={handlePrimaryAction}
+              onClick={onStopTest}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
             >
               <Square className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
               <span>Stop Test</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handlePrimaryAction}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-sky-600 hover:bg-sky-700 dark:bg-sky-500 dark:hover:bg-sky-400 text-white dark:text-slate-950 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-            >
-              <Play className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
-              <span>{phase === 'idle' ? 'Run Test' : 'Run Again'}</span>
             </button>
           )}
         </div>
@@ -126,7 +115,7 @@ export function TopBar({
           return (
             <a
               key={item.id}
-              href={`#${item.id === 'home' ? 'speed-test' : item.id}`}
+              href={PAGE_PATHS[item.id]}
               onClick={(e) => {
                 e.preventDefault();
                 onNavigate(item.id);
@@ -145,4 +134,4 @@ export function TopBar({
       </nav>
     </header>
   );
-}
+});
