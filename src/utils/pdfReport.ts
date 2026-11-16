@@ -5,20 +5,31 @@ import type {
   SpeedUnit,
   TestRunRecord,
 } from '../types/network';
-import { formatLatency, formatThroughput, formatTimeShort } from './formatters';
+import {
+  formatLatency,
+  formatThroughput,
+  formatTimeShort,
+  resolveSpeedUnit,
+} from './formatters';
 
 interface PdfReportInput {
   metrics: SpeedMetrics;
   network: NetworkDiagnostics;
   unit: SpeedUnit;
   history: TestRunRecord[];
+  isSecondCopy?: boolean;
 }
 
-const BRAND_LOGO_PATH = '/assets/aistudio/test_logo_09a7dcd9.png';
+const BRAND_LOGO_PATH = '/assets/aistudio/test_logo_light.png';
 
 async function loadTrimmedLogoDataUrl(
-  src: string
-): Promise<{ dataUrl: string; aspectRatio: number } | null> {
+  src: string,
+  withWatermark = false
+): Promise<{
+  dataUrl: string;
+  watermarkDataUrl: string | null;
+  aspectRatio: number;
+} | null> {
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const image = new Image();
@@ -58,7 +69,23 @@ async function loadTrimmedLogoDataUrl(
     }
 
     if (maxX <= minX || maxY <= minY) {
-      return { dataUrl: srcCanvas.toDataURL('image/png'), aspectRatio: w / h };
+      let watermarkDataUrl: string | null = null;
+      if (withWatermark) {
+        const wmCanvas = document.createElement('canvas');
+        wmCanvas.width = w;
+        wmCanvas.height = h;
+        const wmCtx = wmCanvas.getContext('2d');
+        if (wmCtx) {
+          wmCtx.globalAlpha = 0.09;
+          wmCtx.drawImage(srcCanvas, 0, 0);
+          watermarkDataUrl = wmCanvas.toDataURL('image/png');
+        }
+      }
+      return {
+        dataUrl: srcCanvas.toDataURL('image/png'),
+        watermarkDataUrl,
+        aspectRatio: w / h,
+      };
     }
 
     const cropW = maxX - minX + 1;
@@ -70,8 +97,22 @@ async function loadTrimmedLogoDataUrl(
     if (!outCtx) return null;
     outCtx.drawImage(srcCanvas, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
 
+    let watermarkDataUrl: string | null = null;
+    if (withWatermark) {
+      const wmCanvas = document.createElement('canvas');
+      wmCanvas.width = cropW;
+      wmCanvas.height = cropH;
+      const wmCtx = wmCanvas.getContext('2d');
+      if (wmCtx) {
+        wmCtx.globalAlpha = 0.09;
+        wmCtx.drawImage(outCanvas, 0, 0);
+        watermarkDataUrl = wmCanvas.toDataURL('image/png');
+      }
+    }
+
     return {
       dataUrl: outCanvas.toDataURL('image/png'),
+      watermarkDataUrl,
       aspectRatio: cropW / cropH,
     };
   } catch {
@@ -84,8 +125,14 @@ export async function exportNetworkReportPdf({
   network,
   unit,
   history,
+  isSecondCopy = false,
 }: PdfReportInput): Promise<void> {
-  const logoAsset = await loadTrimmedLogoDataUrl(BRAND_LOGO_PATH);
+  const resolvedUnit = resolveSpeedUnit(
+    unit,
+    metrics.downloadMbps ?? metrics.uploadMbps
+  );
+  const unitLabel = unit === 'Auto' ? `Auto (${resolvedUnit})` : unit;
+  const logoAsset = await loadTrimmedLogoDataUrl(BRAND_LOGO_PATH, true);
 
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -99,27 +146,35 @@ export async function exportNetworkReportPdf({
   const contentWidth = pageWidth - marginX * 2;
   let cursorY = 16;
 
+  const drawCenterWatermark = () => {
+    if (!logoAsset?.watermarkDataUrl) return;
+    const wmWidth = 120;
+    const wmHeight = wmWidth / logoAsset.aspectRatio;
+    const wmX = (pageWidth - wmWidth) / 2;
+    const wmY = (pageHeight - wmHeight) / 2;
+    doc.addImage(logoAsset.watermarkDataUrl, 'PNG', wmX, wmY, wmWidth, wmHeight);
+  };
+
+  drawCenterWatermark();
+
   const ensureSpace = (neededMm: number) => {
     if (cursorY + neededMm > pageHeight - 18) {
       doc.addPage();
+      drawCenterWatermark();
       cursorY = 18;
     }
   };
 
-  // Header with embedded brand logo badge on the right
+  // Header with embedded transparent brand logo on the right
+  let headerBottomY = cursorY;
   if (logoAsset) {
-    const logoH = 11.5;
-    const logoW = Math.min(logoH * logoAsset.aspectRatio, 44);
-    const padX = 3;
-    const padY = 2;
-    const boxW = logoW + padX * 2;
-    const boxH = logoH + padY * 2;
-    const boxX = pageWidth - marginX - boxW;
-    const boxY = cursorY - 4;
+    const logoH = 18;
+    const logoW = Math.min(logoH * logoAsset.aspectRatio, 48);
+    const logoX = pageWidth - marginX - logoW;
+    const logoY = cursorY - 4;
 
-    doc.setFillColor(15, 23, 42);
-    doc.roundedRect(boxX, boxY, boxW, boxH, 2, 2, 'F');
-    doc.addImage(logoAsset.dataUrl, 'PNG', boxX + padX, boxY + padY, logoW, logoH);
+    doc.addImage(logoAsset.dataUrl, 'PNG', logoX, logoY, logoW, logoH);
+    headerBottomY = logoY + logoH + 2.5;
   }
 
   doc.setFont('helvetica', 'bold');
@@ -132,9 +187,18 @@ export async function exportNetworkReportPdf({
   doc.setFontSize(9.5);
   doc.setTextColor(100, 116, 139);
   const generatedStr = new Date().toLocaleString();
-  doc.text(`Generated: ${generatedStr}  ·  Unit: ${unit}  ·  ECORZO LLC`, marginX, cursorY);
-  cursorY += 6;
+  doc.text(`Generated: ${generatedStr}  ·  Unit: ${unitLabel}  ·  ECORZO LLC`, marginX, cursorY);
+  cursorY += 5.5;
 
+  if (isSecondCopy) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(180, 83, 9);
+    doc.text('SECOND COPY  —  Duplicate Report Download', marginX, cursorY);
+    cursorY += 5;
+  }
+
+  cursorY = Math.max(cursorY, headerBottomY);
   doc.setDrawColor(203, 213, 225);
   doc.setLineWidth(0.35);
   doc.line(marginX, cursorY, pageWidth - marginX, cursorY);
@@ -150,18 +214,18 @@ export async function exportNetworkReportPdf({
   const speedCards = [
     {
       label: 'Download Speed',
-      value: `${formatThroughput(metrics.downloadMbps, unit)} ${unit}`,
+      value: `${formatThroughput(metrics.downloadMbps, resolvedUnit)} ${resolvedUnit}`,
       sub:
         metrics.peakDownloadMbps !== null
-          ? `Peak ${formatThroughput(metrics.peakDownloadMbps, unit)} ${unit}`
+          ? `Peak ${formatThroughput(metrics.peakDownloadMbps, resolvedUnit)} ${resolvedUnit}`
           : 'Sustained stream',
     },
     {
       label: 'Upload Speed',
-      value: `${formatThroughput(metrics.uploadMbps, unit)} ${unit}`,
+      value: `${formatThroughput(metrics.uploadMbps, resolvedUnit)} ${resolvedUnit}`,
       sub:
         metrics.peakUploadMbps !== null
-          ? `Peak ${formatThroughput(metrics.peakUploadMbps, unit)} ${unit}`
+          ? `Peak ${formatThroughput(metrics.peakUploadMbps, resolvedUnit)} ${resolvedUnit}`
           : 'Sustained stream',
     },
     {
@@ -352,9 +416,24 @@ export async function exportNetworkReportPdf({
 
     for (const rec of history.slice(0, 8)) {
       ensureSpace(6.5);
+      const dlUnit = resolveSpeedUnit(unit, rec.downloadMbps);
+      const ulUnit = resolveSpeedUnit(unit, rec.uploadMbps);
+      const dlText =
+        rec.downloadMbps === null
+          ? '—'
+          : unit === 'Auto'
+          ? `${formatThroughput(rec.downloadMbps, dlUnit)} ${dlUnit}`
+          : formatThroughput(rec.downloadMbps, dlUnit);
+      const ulText =
+        rec.uploadMbps === null
+          ? '—'
+          : unit === 'Auto'
+          ? `${formatThroughput(rec.uploadMbps, ulUnit)} ${ulUnit}`
+          : formatThroughput(rec.uploadMbps, ulUnit);
+
       doc.text(formatTimeShort(rec.timestamp), marginX, cursorY);
-      doc.text(formatThroughput(rec.downloadMbps, unit), marginX + 34, cursorY);
-      doc.text(formatThroughput(rec.uploadMbps, unit), marginX + 68, cursorY);
+      doc.text(dlText, marginX + 34, cursorY);
+      doc.text(ulText, marginX + 68, cursorY);
       doc.text(formatLatency(rec.pingMs), marginX + 100, cursorY);
       doc.text(formatLatency(rec.jitterMs), marginX + 125, cursorY);
       const ipText = (rec.ip ?? '—').slice(0, 22);
@@ -371,7 +450,7 @@ export async function exportNetworkReportPdf({
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
     doc.text(
-      `TestLine by ECORZO LLC  ·  Page ${p} of ${pageCount}`,
+      `TestLine by ECORZO LLC  ·  ${isSecondCopy ? 'Second Copy  ·  ' : ''}Page ${p} of ${pageCount}`,
       marginX,
       pageHeight - 10
     );
@@ -381,5 +460,6 @@ export async function exportNetworkReportPdf({
     .toISOString()
     .replace(/[:T]/g, '-')
     .slice(0, 19);
-  doc.save(`testline-report-${stamp}.pdf`);
+  const copySuffix = isSecondCopy ? '-second-copy' : '';
+  doc.save(`testline-report${copySuffix}-${stamp}.pdf`);
 }

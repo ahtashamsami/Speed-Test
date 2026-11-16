@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="14" fill="#070B12" />
+  <path
+    d="M12 40a20 20 0 0 1 40 0"
+    stroke="url(#tl-arc)"
+    stroke-width="6"
+    stroke-linecap="round"
+  />
+  <path
+    d="M14 40h10l4-10 6 16 5-9h11"
+    stroke="#38BDF8"
+    stroke-width="3.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M32 40l13-14"
+    stroke="#F59E0B"
+    stroke-width="3.5"
+    stroke-linecap="round"
+  />
+  <circle cx="32" cy="40" r="3.5" fill="#0EA5E9" />
+  <defs>
+    <linearGradient id="tl-arc" x1="12" y1="40" x2="52" y2="20" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0EA5E9" />
+      <stop offset="55%" stop-color="#22D3EE" />
+      <stop offset="100%" stop-color="#F97316" />
+    </linearGradient>
+  </defs>
+</svg>

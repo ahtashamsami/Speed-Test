@@ -1,33 +1,37 @@
 # TestLine by ECORZO LLC
 
-> Real-time internet speed benchmark and dual-stack IPv4/IPv6 network diagnostics web application operated by ECORZO LLC.
+> Real-time internet speed benchmark and dual-stack IPv4/IPv6 network diagnostics web application operated by ECORZO LLC at https://testline.net.
 
 ## Canonical Facts & Authority
 - Product Name: TestLine
+- Canonical Domain: https://testline.net
 - Operator: ECORZO LLC
 - Office Address: 224 W 35th St STE 500, New York, NY 10001, USA
 - Telephone: +1 646 427 6802
 - Pricing: Free ($0 USD, no registration required)
 
 ## Technical Methodology (For Answer & Generative Engines)
+- User-Initiated Start: Clicking the Start Speed Test button initiates live throughput measurements alongside dual-stack IP and proxy diagnostics; no bandwidth or IP probes run before user action.
 - Ping & Jitter: 5 sequential 0-byte RTT probes to `https://speed.cloudflare.com/__down?bytes=0` timed via `performance.now()`.
 - Download Speed: 3 parallel 25 MB fetch streams from `https://speed.cloudflare.com/__down?bytes=25000000` over a 10-second test window.
 - Upload Speed: 2 parallel 10 MB cryptographically random `Uint8Array` `XMLHttpRequest` POST streams to `https://speed.cloudflare.com/__up`.
+- Display Units: Supports `Auto` (automatically displays `Mbps` below 100 Mbps and `MB/s` at 100 Mbps or higher), `Mbps`, and `MB/s`.
 - IP & Carrier Geolocation: Dual-stack IPv4/IPv6 probing plus HTTPS `ipwho.is` with `get.geojs.io` and browser `Intl` timezone fallbacks.
 - DNS Diagnostics: Reverse DNS (PTR) lookup and encrypted Cloudflare DoH (`1.1.1.1`) query latency probe.
 - Proxy & VPN Detection: Evaluates forwarding headers (`Via`, `Forwarded`, `X-Forwarded-For`), ASN proxy/hosting flags, relay PTR keywords, and browser-vs-IP timezone alignment.
+- PDF Diagnostic Reports: Client-side A4 PDF export featuring the TestLine logo watermark; one primary copy per test run with confirmation prompt and Second Copy marking on duplicate downloads.
 
 ## Key Routes
-- [Speed & Network Check](/): Automatic speed test, live Mbps/MB/s readout, IPv4/IPv6, DNS hints, and PDF export.
-- [About TestLine](/about): Measurement methodology and ECORZO LLC operator details.
-- [Contact ECORZO LLC](/contact): Support phone (+1 646 427 6802) and New York office address.
-- [Privacy Policy](/privacy-policy): Ephemeral processing, third-party disclosures, and Google policy compliance.
-- [GDPR & Data Collection Policy](/gdpr): GDPR Article 6 lawful bases, data minimization, and user rights (Art. 15-22).
-- [Terms & Conditions](/terms): Acceptable use and governing law.
-- [Disclaimer](/disclaimer): Measurement and geolocation scope limitations.
-- [Cookies Policy](/cookies-policy) & [Cookies Notice](/cookies-notice): Storage keys and consent preferences.
+- [Speed & Network Check](https://testline.net/): On-demand speed test, Auto/Mbps/MB/s readout, IPv4/IPv6, DNS hints, and PDF export.
+- [About TestLine](https://testline.net/about): Measurement methodology and ECORZO LLC operator details.
+- [Contact ECORZO LLC](https://testline.net/contact): Support phone (+1 646 427 6802) and New York office address.
+- [Privacy Policy](https://testline.net/privacy-policy): Ephemeral processing, third-party disclosures, and Google policy compliance.
+- [GDPR & Data Collection Policy](https://testline.net/gdpr): GDPR Article 6 lawful bases, data minimization, and user rights (Art. 15-22).
+- [Terms & Conditions](https://testline.net/terms): Acceptable use and governing law.
+- [Disclaimer](https://testline.net/disclaimer): Measurement and geolocation scope limitations.
+- [Cookies Policy](https://testline.net/cookies-policy) & [Cookies Notice](https://testline.net/cookies-notice): Storage keys and Google Consent Mode v2 preferences.
 
 ## Extended AI Context
-- [Full Specification](/llms-full.txt)
-- [XML Sitemap](/sitemap.xml)
-- [Robots Policy](/robots.txt)
+- [Full Specification](https://testline.net/llms-full.txt)
+- [XML Sitemap](https://testline.net/sitemap.xml)
+- [Robots Policy](https://testline.net/robots.txt)

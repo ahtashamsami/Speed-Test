@@ -9,7 +9,7 @@ const FAQ_ITEMS: Array<{ question: string; answer: string }> = [
   {
     question: 'How does TestLine measure internet download and upload speed?',
     answer:
-      'TestLine runs real-time browser-to-edge transfers against Cloudflare public speed endpoints. Download speed uses 3 parallel 25 MB fetch streams over a 10-second window, while upload speed measures 2 parallel 10 MB binary POST streams using XMLHttpRequest upload progress events.',
+      'Click the Start Speed Test play button to launch real-time browser-to-edge transfers against Cloudflare public speed endpoints. Download speed uses 3 parallel 25 MB fetch streams over a 10-second window, while upload speed measures 2 parallel 10 MB binary POST streams using XMLHttpRequest upload progress events. Auto mode switches between Mbps and MB/s at 100 Mbps.',
   },
   {
     question: 'What are good ping and jitter values for video calls and gaming?',
@@ -19,7 +19,7 @@ const FAQ_ITEMS: Array<{ question: string; answer: string }> = [
   {
     question: 'How do I check my public IPv4 and IPv6 address?',
     answer:
-      'TestLine automatically resolves your public IP address on page load by probing both dual-stack client endpoints and edge headers. If your ISP supports dual-stack routing, both your IPv4 and IPv6 addresses appear side by side with one-click copy buttons.',
+      'Click the Start Speed Test button to trigger both your speed benchmark and dual-stack IP diagnostics. TestLine probes dual-stack client endpoints and edge headers to display your IPv4 and IPv6 addresses side by side with one-click copy buttons.',
   },
   {
     question: 'How does TestLine detect a VPN, proxy, or datacenter relay?',
@@ -34,7 +34,7 @@ const FAQ_ITEMS: Array<{ question: string; answer: string }> = [
   {
     question: 'Does ECORZO LLC store my IP address or speed test data?',
     answer:
-      'No. IP lookups and speed tests are processed ephemerally in memory and never sold or stored in permanent user profiles. Recent run history is saved strictly inside your own browser storage, and exported PDF reports are generated locally on your device.',
+      'No. Speed tests and IP lookups run only when you initiate a test, are processed ephemerally in memory, and are never sold or stored in permanent user profiles. Recent run history is saved strictly inside your own browser storage, and exported PDF reports are generated locally on your device.',
   },
 ];
 

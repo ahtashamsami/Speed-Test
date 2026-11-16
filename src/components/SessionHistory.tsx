@@ -1,7 +1,12 @@
 import { Trash2 } from 'lucide-react';
 import { memo } from 'react';
 import type { SpeedUnit, TestRunRecord } from '../types/network';
-import { formatLatency, formatThroughput, formatTimeShort } from '../utils/formatters';
+import {
+  formatLatency,
+  formatThroughput,
+  formatTimeShort,
+  resolveSpeedUnit,
+} from '../utils/formatters';
 
 interface SessionHistoryProps {
   records: TestRunRecord[];
@@ -61,31 +66,45 @@ export const SessionHistory = memo(function SessionHistory({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-sm">
-              {records.map((rec) => (
-                <tr
-                  key={rec.id}
-                  className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
-                >
-                  <td className="py-2.5 pr-4 font-mono text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                    {formatTimeShort(rec.timestamp)}
-                  </td>
-                  <td className="py-2.5 px-4 text-right font-mono font-medium text-sky-700 dark:text-sky-300 whitespace-nowrap">
-                    {formatThroughput(rec.downloadMbps, unit)}
-                  </td>
-                  <td className="py-2.5 px-4 text-right font-mono font-medium text-teal-700 dark:text-teal-300 whitespace-nowrap">
-                    {formatThroughput(rec.uploadMbps, unit)}
-                  </td>
+              {records.map((rec) => {
+                const dlUnit = resolveSpeedUnit(unit, rec.downloadMbps);
+                const ulUnit = resolveSpeedUnit(unit, rec.uploadMbps);
+                return (
+                  <tr
+                    key={rec.id}
+                    className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                  >
+                    <td className="py-2.5 pr-4 font-mono text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                      {formatTimeShort(rec.timestamp)}
+                    </td>
+                    <td className="py-2.5 px-4 text-right font-mono font-medium text-sky-700 dark:text-sky-300 whitespace-nowrap">
+                      {formatThroughput(rec.downloadMbps, dlUnit)}
+                      {unit === 'Auto' && rec.downloadMbps !== null && (
+                        <span className="ml-1 text-xs font-normal text-slate-400 dark:text-slate-500">
+                          {dlUnit}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-4 text-right font-mono font-medium text-teal-700 dark:text-teal-300 whitespace-nowrap">
+                      {formatThroughput(rec.uploadMbps, ulUnit)}
+                      {unit === 'Auto' && rec.uploadMbps !== null && (
+                        <span className="ml-1 text-xs font-normal text-slate-400 dark:text-slate-500">
+                          {ulUnit}
+                        </span>
+                      )}
+                    </td>
                   <td className="py-2.5 px-4 text-right font-mono text-slate-800 dark:text-slate-200 whitespace-nowrap">
                     {formatLatency(rec.pingMs)}
                   </td>
                   <td className="py-2.5 px-4 text-right font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap">
                     {formatLatency(rec.jitterMs)}
                   </td>
-                  <td className="py-2.5 pl-4 text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                    {rec.ip ?? '—'}
-                  </td>
-                </tr>
-              ))}
+                    <td className="py-2.5 pl-4 text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                      {rec.ip ?? '—'}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -89,13 +89,14 @@ function upsertLinkTag(rel: string, href: string): void {
   el.setAttribute('href', href);
 }
 
+const CANONICAL_ORIGIN = 'https://testline.net';
+
 export function applyRouteSeo(page: AppPage): void {
   if (typeof document === 'undefined' || typeof window === 'undefined') return;
 
   const meta = ROUTE_SEO_META[page] ?? ROUTE_SEO_META.home;
-  const origin = window.location.origin;
-  const canonicalUrl = `${origin}${PAGE_PATHS[page]}`;
-  const ogImageUrl = `${origin}/assets/aistudio/test_logo_09a7dcd9.png`;
+  const canonicalUrl = `${CANONICAL_ORIGIN}${PAGE_PATHS[page]}`;
+  const ogImageUrl = `${CANONICAL_ORIGIN}/assets/aistudio/test_logo_header_dark.png`;
 
   document.title = meta.title;
   upsertMetaTag('name', 'description', meta.description);
@@ -123,7 +124,7 @@ export function applyRouteSeo(page: AppPage): void {
       '@type': 'ListItem',
       position: 1,
       name: 'TestLine',
-      item: `${origin}/`,
+      item: `${CANONICAL_ORIGIN}/`,
     },
   ];
   if (page !== 'home') {

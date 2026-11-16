@@ -1,4 +1,3 @@
-import { Download } from 'lucide-react';
 import { memo } from 'react';
 import { PAGE_PATHS, type AppPage } from './TopBar';
 
@@ -23,13 +22,6 @@ export const Footer = memo(function Footer({ activePage, onNavigate }: FooterPro
     { id: 'contact', label: 'Contact' },
   ];
 
-  const seoFiles = [
-    { label: 'sitemap.xml', href: '/sitemap.xml?download=1', filename: 'sitemap.xml' },
-    { label: 'robots.txt', href: '/robots.txt?download=1', filename: 'robots.txt' },
-    { label: 'llms.txt', href: '/llms.txt?download=1', filename: 'llms.txt' },
-    { label: 'llms-full.txt', href: '/llms-full.txt?download=1', filename: 'llms-full.txt' },
-  ];
-
   return (
     <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B111C] mt-12">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
@@ -51,7 +43,7 @@ export const Footer = memo(function Footer({ activePage, onNavigate }: FooterPro
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-12 text-xs">
             <div className="space-y-2">
               <div className="font-semibold text-slate-800 dark:text-slate-200">
                 Company
@@ -98,26 +90,6 @@ export const Footer = memo(function Footer({ activePage, onNavigate }: FooterPro
                       }`}
                     >
                       {link.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="space-y-2">
-              <div className="font-semibold text-slate-800 dark:text-slate-200">
-                Search Console &amp; AI Crawlers
-              </div>
-              <ul className="space-y-1.5 text-slate-600 dark:text-slate-400">
-                {seoFiles.map((file) => (
-                  <li key={file.filename}>
-                    <a
-                      href={file.href}
-                      download={file.filename}
-                      className="inline-flex items-center gap-1.5 font-mono hover:text-slate-900 dark:hover:text-slate-100 transition-colors whitespace-nowrap"
-                    >
-                      <Download className="w-3 h-3 text-sky-600 dark:text-sky-400" aria-hidden="true" />
-                      <span>{file.label}</span>
                     </a>
                   </li>
                 ))}

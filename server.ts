@@ -107,17 +107,26 @@ function injectSeoIntoHtml(html: string, origin: string, reqPath: string): strin
   const normalizedPath = reqPath.toLowerCase().replace(/\/+$/, '') || '/';
   const meta = SERVER_ROUTE_SEO[normalizedPath] ?? SERVER_ROUTE_SEO['/'];
   const canonicalUrl = `${origin}${normalizedPath}`;
-  const ogImageUrl = `${origin}/assets/aistudio/test_logo_09a7dcd9.png`;
+  const ogImageUrl = `${origin}/assets/aistudio/test_logo_header_dark.png`;
 
-  let output = html.replace(
-    /<title>[\s\S]*?<\/title>/i,
-    `<title>${escapeHtmlAttr(meta.title)}</title>`
-  );
+  let output = html
+    .replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeHtmlAttr(meta.title)}</title>`)
+    .replace(
+      /<meta\s+name="description"[\s\S]*?>/i,
+      `<meta name="description" content="${escapeHtmlAttr(meta.description)}" />`
+    )
+    .replace(/\s*<link\s+rel="canonical"[\s\S]*?>/gi, '')
+    .replace(/\s*<meta\s+property="og:(?:url|title|description|image)"[\s\S]*?>/gi, '')
+    .replace(/\s*<meta\s+name="twitter:(?:title|description|image)"[\s\S]*?>/gi, '')
+    .replace(/\s*<meta\s+name="google-adsense-account"[\s\S]*?>/gi, '');
 
-  output = output.replace(
-    /<meta\s+name="description"[^>]*>/i,
-    `<meta name="description" content="${escapeHtmlAttr(meta.description)}" />`
-  );
+  const rawAdSenseClient =
+    process.env.VITE_ADSENSE_CLIENT_ID?.trim() || process.env.ADSENSE_PUBLISHER_ID?.trim() || '';
+  const normalizedClientId = rawAdSenseClient
+    ? rawAdSenseClient.startsWith('ca-')
+      ? rawAdSenseClient
+      : `ca-${rawAdSenseClient}`
+    : '';
 
   const dynamicTags = [
     `<link rel="canonical" href="${escapeHtmlAttr(canonicalUrl)}" />`,
@@ -128,28 +137,34 @@ function injectSeoIntoHtml(html: string, origin: string, reqPath: string): strin
     `<meta name="twitter:title" content="${escapeHtmlAttr(meta.title)}" />`,
     `<meta name="twitter:description" content="${escapeHtmlAttr(meta.description)}" />`,
     `<meta name="twitter:image" content="${escapeHtmlAttr(ogImageUrl)}" />`,
+    ...(normalizedClientId && /^ca-pub-\d{10,20}$/.test(normalizedClientId)
+      ? [`<meta name="google-adsense-account" content="${escapeHtmlAttr(normalizedClientId)}" />`]
+      : []),
   ].join('\n    ');
 
   output = output.replace('</head>', `    ${dynamicTags}\n  </head>`);
   return output;
 }
 
-function resolveBaseOrigin(req: Request): string {
+function resolveBaseOrigin(_req: Request): string {
   const configured = process.env.APP_URL?.trim();
   if (configured && /^https?:\/\//i.test(configured)) {
     return configured.replace(/\/+$/, '');
   }
-  const protoHeader = req.headers['x-forwarded-proto'];
-  const proto =
-    typeof protoHeader === 'string' && protoHeader.length > 0
-      ? protoHeader.split(',')[0].trim()
-      : req.protocol || 'https';
-  const hostHeader = req.headers['x-forwarded-host'] || req.get('host');
-  const host =
-    typeof hostHeader === 'string' && hostHeader.length > 0
-      ? hostHeader.split(',')[0].trim()
-      : `localhost:${PORT}`;
-  return `${proto}://${host}`;
+  return 'https://testline.net';
+}
+
+function buildAdsTxtContent(): string {
+  const rawPub =
+    process.env.ADSENSE_PUBLISHER_ID?.trim() || process.env.VITE_ADSENSE_CLIENT_ID?.trim() || '';
+  const pubId = rawPub.replace(/^ca-/i, '');
+  if (pubId && /^pub-\d{10,20}$/.test(pubId)) {
+    return `google.com, ${pubId}, DIRECT, f08c47fec0942fa0\n`;
+  }
+  return `# TestLine (https://testline.net) - Google AdSense Authorized Digital Sellers
+# Set ADSENSE_PUBLISHER_ID (e.g. pub-1234567890123456) in your environment to activate:
+# google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
+`;
 }
 
 function buildSitemapXml(origin: string): string {
@@ -185,7 +200,35 @@ ${entries}
 }
 
 function buildRobotsTxt(origin: string): string {
-  return `User-agent: *
+  return `User-agent: Googlebot
+Allow: /
+Disallow: /api/
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /api/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /api/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /api/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /api/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /api/
+
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /api/
+
+User-agent: *
 Allow: /
 Disallow: /api/
 
@@ -196,37 +239,41 @@ Sitemap: ${origin}/sitemap.xml
 function buildLlmsTxt(origin: string): string {
   return `# TestLine by ECORZO LLC
 
-> Real-time internet speed benchmark and dual-stack IPv4/IPv6 network diagnostics web application operated by ECORZO LLC.
+> Real-time internet speed benchmark and dual-stack IPv4/IPv6 network diagnostics web application operated by ECORZO LLC at ${origin}.
 
 ## Canonical Facts & Authority
 - Product Name: TestLine
+- Canonical Domain: ${origin}
 - Operator: ECORZO LLC
 - Office Address: 224 W 35th St STE 500, New York, NY 10001, USA
 - Telephone: +1 646 427 6802
 - Pricing: Free ($0 USD, no registration required)
 
 ## Technical Methodology (For Answer & Generative Engines)
+- User-Initiated Start: Clicking the Start Speed Test button initiates live throughput measurements alongside dual-stack IP and proxy diagnostics; no bandwidth or IP probes run before user action.
 - Ping & Jitter: 5 sequential 0-byte RTT probes to \`https://speed.cloudflare.com/__down?bytes=0\` timed via \`performance.now()\`.
 - Download Speed: 3 parallel 25 MB fetch streams from \`https://speed.cloudflare.com/__down?bytes=25000000\` over a 10-second test window.
 - Upload Speed: 2 parallel 10 MB cryptographically random \`Uint8Array\` \`XMLHttpRequest\` POST streams to \`https://speed.cloudflare.com/__up\`.
+- Display Units: Supports \`Auto\` (automatically displays \`Mbps\` below 100 Mbps and \`MB/s\` at 100 Mbps or higher), \`Mbps\`, and \`MB/s\`.
 - IP & Carrier Geolocation: Dual-stack IPv4/IPv6 probing plus HTTPS \`ipwho.is\` with \`get.geojs.io\` and browser \`Intl\` timezone fallbacks.
 - DNS Diagnostics: Reverse DNS (PTR) lookup and encrypted Cloudflare DoH (\`1.1.1.1\`) query latency probe.
 - Proxy & VPN Detection: Evaluates forwarding headers (\`Via\`, \`Forwarded\`, \`X-Forwarded-For\`), ASN proxy/hosting flags, relay PTR keywords, and browser-vs-IP timezone alignment.
+- PDF Diagnostic Reports: Client-side A4 PDF export featuring the TestLine logo watermark; one primary copy per test run with confirmation prompt and Second Copy marking on duplicate downloads.
 
 ## Key Routes
-- [Speed & Network Check](${origin}/): Automatic speed test, live Mbps/MB/s readout, IPv4/IPv6, DNS hints, and PDF export.
+- [Speed & Network Check](${origin}/): On-demand speed test, Auto/Mbps/MB/s readout, IPv4/IPv6, DNS hints, and PDF export.
 - [About TestLine](${origin}/about): Measurement methodology and ECORZO LLC operator details.
 - [Contact ECORZO LLC](${origin}/contact): Support phone (+1 646 427 6802) and New York office address.
-- [Privacy Policy](${origin}/privacy-policy): Ephemeral diagnostic processing, third-party disclosures, and Google policy compliance.
-- [GDPR & Data Collection Policy](${origin}/gdpr): Lawful bases (GDPR Art. 6), data minimization, international transfers, and statutory rights (Art. 15-22).
-- [Terms & Conditions](${origin}/terms): Acceptable use and governing law (New York, USA).
-- [Disclaimer](${origin}/disclaimer): Scope and limitations of browser-based network measurements.
-- [Cookies Policy](${origin}/cookies-policy) & [Cookies Notice](${origin}/cookies-notice): Storage keys and consent preferences.
+- [Privacy Policy](${origin}/privacy-policy): Ephemeral processing, third-party disclosures, and Google policy compliance.
+- [GDPR & Data Collection Policy](${origin}/gdpr): GDPR Article 6 lawful bases, data minimization, and user rights (Art. 15-22).
+- [Terms & Conditions](${origin}/terms): Acceptable use and governing law.
+- [Disclaimer](${origin}/disclaimer): Measurement and geolocation scope limitations.
+- [Cookies Policy](${origin}/cookies-policy) & [Cookies Notice](${origin}/cookies-notice): Storage keys and Google Consent Mode v2 preferences.
 
-## Extended AI Context & Crawling
+## Extended AI Context
 - [Full Specification](${origin}/llms-full.txt)
-- [Sitemap](${origin}/sitemap.xml)
-- [Robots](${origin}/robots.txt)
+- [XML Sitemap](${origin}/sitemap.xml)
+- [Robots Policy](${origin}/robots.txt)
 `;
 }
 
@@ -249,14 +296,18 @@ function buildLlmsFullTxt(origin: string): string {
 | Upload Throughput | 2 parallel 10 MB XHR POST streams | 10+ Mbps (HD calls) / 25+ Mbps (Creator) | Video calls, uploads, remote work |
 | Average Ping (RTT) | 5 sequential 0-byte Cloudflare probes | < 30 ms (Low) / 30–60 ms (Normal) | Gaming, VoIP, interactive apps |
 | Jitter (Variance) | Mean consecutive RTT delta | < 10 ms (Stable) / > 25 ms (Unstable) | Audio/video packet stability |
-| DoH DNS Latency | HTTPS DNS-JSON query to 1.1.1.1 | < 40 ms | Encrypted domain resolution speed |
+| DoH DNS Latency | HTTPS JSON query to 1.1.1.1 | < 40 ms | Encrypted domain resolution speed |
 
-## 3. Privacy & Data Handling Commitments
+## 3. Interactive Behavior & Reporting
+- User-Triggered Probes: Neither bandwidth transfers nor public IP probes run until the user clicks Start Speed Test.
+- Adaptive Unit Mode (\`Auto\`): Automatically displays \`Mbps\` for connections under 100 Mbps and switches to \`MB/s\` at 100 Mbps or higher, with manual \`Mbps\` and \`MB/s\` overrides.
+- PDF Export Controls: Client-side jsPDF reports include the TestLine brand logo header and centered watermark; duplicate exports during the same test run require explicit confirmation and are labeled \`Second Copy\`.
+
+## 4. Privacy & Data Handling Commitments
 - Zero account registration, zero passwords, and zero sale of personal data or IP addresses.
 - Ephemeral server processing for IP lookup, PTR resolution, and forwarding header inspection.
-- Client-side local storage keys: \`testline_theme\`, \`testline_history_v1\` (max 15 runs), \`testline_cookie_consent\`.
-- Client-side PDF diagnostic report generation via jsPDF with no server upload.
-- Compliant with EU/UK GDPR (Articles 5, 6, 15-22), CCPA/CPRA, and Google EU User Consent & Publisher Policies.
+- Client-side local storage keys: \`testline_theme\`, \`testline_unit_v1\`, \`testline_history_v1\` (max 15 runs), \`testline_cookie_consent\`.
+- Compliant with EU/UK GDPR (Articles 5, 6, 15-22), Google Consent Mode v2, CCPA/CPRA, and Google Publisher Policies.
 `;
 }
 
@@ -507,6 +558,25 @@ async function startServer() {
     res.status(200).send(txt);
   });
 
+  app.get('/ads.txt', (_req: Request, res: Response) => {
+    res.set({
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'public, max-age=3600',
+    });
+    res.status(200).send(buildAdsTxtContent());
+  });
+
+  app.get('/api/health', (_req: Request, res: Response) => {
+    res.set({
+      'Cache-Control': 'no-store, no-cache',
+    });
+    res.status(200).json({
+      ok: true,
+      service: 'testline',
+      timestamp: Date.now(),
+    });
+  });
+
   app.get('/api/speed/ping', (_req: Request, res: Response) => {
     res.set({
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
@@ -665,11 +735,27 @@ async function startServer() {
   } else {
     const distDir = path.join(__dirname, 'dist');
     const templateHtml = await fs.readFile(path.join(distDir, 'index.html'), 'utf-8');
-    app.use(express.static(distDir, { index: false }));
+    app.use(
+      express.static(distDir, {
+        index: false,
+        setHeaders(res, filePath) {
+          if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+            if (/[-\.][a-f0-9]{8,}\./i.test(path.basename(filePath))) {
+              res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            } else {
+              res.setHeader('Cache-Control', 'public, max-age=86400');
+            }
+          } else {
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+          }
+        },
+      })
+    );
     app.get('*', (req: Request, res: Response) => {
       const origin = resolveBaseOrigin(req);
       const html = injectSeoIntoHtml(templateHtml, origin, req.path);
       res.set('Content-Type', 'text/html; charset=utf-8');
+      res.set('Cache-Control', 'public, max-age=300');
       res.set('X-Robots-Tag', 'index, follow');
       res.status(200).send(html);
     });

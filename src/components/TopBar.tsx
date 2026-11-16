@@ -54,13 +54,27 @@ export const TopBar = memo(function TopBar({
             onNavigate('home');
           }}
           aria-label="TestLine Home"
-          className="inline-flex items-center whitespace-nowrap shrink-0 rounded-lg bg-slate-900 dark:bg-transparent px-3 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          className="inline-flex items-center whitespace-nowrap shrink-0 rounded-lg transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
         >
           <img
-            src="/assets/aistudio/test_logo_09a7dcd9.png"
+            src="/assets/aistudio/test_logo_header_light.png"
             alt="TestLine logo"
+            width={289}
+            height={192}
+            fetchPriority="high"
+            decoding="sync"
             referrerPolicy="no-referrer"
-            className="h-[72px] sm:h-20 w-auto object-contain select-none"
+            className="block dark:hidden h-[72px] sm:h-20 w-auto object-contain select-none"
+          />
+          <img
+            src="/assets/aistudio/test_logo_header_dark.png"
+            alt="TestLine logo"
+            width={289}
+            height={192}
+            fetchPriority="high"
+            decoding="sync"
+            referrerPolicy="no-referrer"
+            className="hidden dark:block h-[72px] sm:h-20 w-auto object-contain select-none"
           />
         </a>
 

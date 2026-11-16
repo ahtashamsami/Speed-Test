@@ -12,23 +12,56 @@
       name="robots"
       content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
     />
-    <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
-    <link rel="alternate" type="text/plain" title="LLMs Context" href="/llms.txt" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F8FAFC" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#070B12" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/assets/aistudio/test_logo_header_dark.png" />
+    <link rel="canonical" href="https://testline.net/" />
+    <link rel="sitemap" type="application/xml" title="Sitemap" href="https://testline.net/sitemap.xml" />
+    <link rel="alternate" type="text/plain" title="LLMs Context" href="https://testline.net/llms.txt" />
     <meta property="og:site_name" content="TestLine" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://testline.net/" />
     <meta property="og:title" content="TestLine — Internet Speed Test & IP Diagnostics" />
     <meta
       property="og:description"
       content="Test live internet download, upload, ping, and jitter with TestLine by ECORZO LLC. Check public IPv4/IPv6, ISP, ASN, DNS latency, and VPN or proxy status."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/assets/aistudio/test_logo_09a7dcd9.png" />
+    <meta property="og:image" content="https://testline.net/assets/aistudio/test_logo_header_dark.png" />
+    <meta property="og:image:alt" content="TestLine by ECORZO LLC — Internet Speed Test & IP Diagnostics" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="TestLine — Internet Speed Test & IP Diagnostics" />
     <meta
       name="twitter:description"
       content="Real-time internet speed benchmark, dual-stack IPv4/IPv6 lookup, DNS latency, and VPN/proxy detection by ECORZO LLC."
     />
-    <meta name="twitter:image" content="/assets/aistudio/test_logo_09a7dcd9.png" />
+    <meta name="twitter:image" content="https://testline.net/assets/aistudio/test_logo_header_dark.png" />
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        window.dataLayer.push(arguments);
+      }
+      gtag('consent', 'default', {
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        analytics_storage: 'denied',
+        functionality_storage: 'granted',
+        security_storage: 'granted',
+        wait_for_update: 500,
+      });
+      try {
+        if (localStorage.getItem('testline_cookie_consent') === 'all') {
+          gtag('consent', 'update', {
+            ad_storage: 'granted',
+            ad_user_data: 'granted',
+            ad_personalization: 'granted',
+            analytics_storage: 'granted',
+          });
+        }
+      } catch (e) {}
+    </script>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -36,19 +69,21 @@
           {
             "@type": "WebApplication",
             "name": "TestLine",
+            "url": "https://testline.net/",
+            "image": "https://testline.net/assets/aistudio/test_logo_header_dark.png",
             "applicationCategory": "UtilitiesApplication",
             "operatingSystem": "All",
             "browserRequirements": "Requires JavaScript",
             "description": "Real-time internet speed benchmark (download, upload, ping, jitter) and full IPv4/IPv6, reverse DNS, DoH latency, and proxy/VPN diagnostics.",
             "featureList": [
-              "Live Download Speed Test (Mbps and MB/s)",
+              "Live Download Speed Test (Auto, Mbps, and MB/s)",
               "Live Upload Speed Test",
               "Ping Latency and Jitter Variance Measurement",
               "Dual-Stack IPv4 and IPv6 Address Lookup",
               "ISP, Carrier, and Autonomous System (ASN) Identification",
               "Reverse DNS (PTR) and Cloudflare DoH Latency Probe",
               "VPN, Proxy, and Datacenter Relay Detection",
-              "Downloadable PDF Diagnostic Report"
+              "Downloadable Branded PDF Diagnostic Report with Second-Copy Controls"
             ],
             "publisher": {
               "@id": "#ecorzo-organization"
@@ -64,6 +99,8 @@
             "@id": "#ecorzo-organization",
             "name": "ECORZO LLC",
             "brand": "TestLine",
+            "url": "https://testline.net/",
+            "logo": "https://testline.net/assets/aistudio/test_logo_header_dark.png",
             "telephone": "+1-646-427-6802",
             "address": {
               "@type": "PostalAddress",
@@ -82,7 +119,7 @@
                 "name": "How does TestLine measure internet download and upload speed?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "TestLine runs real-time browser-to-edge transfers against Cloudflare public speed endpoints. Download speed uses 3 parallel 25 MB fetch streams over a 10-second window, while upload speed measures 2 parallel 10 MB binary POST streams using XMLHttpRequest upload progress events."
+                  "text": "When you click Start Speed Test, TestLine runs real-time browser-to-edge transfers against Cloudflare public speed endpoints. Download speed uses 3 parallel 25 MB fetch streams over a 10-second window, while upload speed measures 2 parallel 10 MB binary POST streams using XMLHttpRequest upload progress events."
                 }
               },
               {
@@ -98,7 +135,7 @@
                 "name": "How do I check my public IPv4 and IPv6 address?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "TestLine automatically resolves your public IP address on page load by probing both dual-stack client endpoints and edge headers. If your ISP supports dual-stack routing, both your IPv4 and IPv6 addresses appear side by side with one-click copy buttons."
+                  "text": "Click the Start Speed Test play button to launch both your live speed test and full IP lookup. TestLine probes dual-stack client endpoints and edge headers to reveal your public IPv4 and IPv6 addresses side by side with one-click copy buttons."
                 }
               },
               {
@@ -122,7 +159,7 @@
                 "name": "Does ECORZO LLC store my IP address or speed test data?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "No. IP lookups and speed tests are processed ephemerally in memory and never sold or stored in permanent user profiles. Recent run history is saved strictly inside your own browser storage, and exported PDF reports are generated locally on your device."
+                  "text": "No. IP lookups and speed tests run only when you start a test, are processed ephemerally in memory, and are never sold or stored in permanent user profiles. Recent run history is saved strictly inside your own browser storage, and exported PDF reports are generated locally on your device."
                 }
               }
             ]
@@ -134,8 +171,8 @@
               {
                 "@type": "HowToStep",
                 "position": 1,
-                "name": "Open TestLine",
-                "text": "Load the TestLine single-page tool. Latency, download speed, upload speed, and IP diagnostics begin automatically."
+                "name": "Click Start Speed Test",
+                "text": "Press the triangular Start Speed Test play button to initiate live ping, jitter, download, upload, and dual-stack IP diagnostics."
               },
               {
                 "@type": "HowToStep",
@@ -147,7 +184,7 @@
                 "@type": "HowToStep",
                 "position": 3,
                 "name": "Export PDF Report",
-                "text": "Click Export PDF to save a branded summary of your speed benchmark and network diagnostics directly on your device."
+                "text": "Click Export PDF after initiating a test to download a watermarked summary of your speed benchmark and network diagnostics directly on your device."
               }
             ]
           }

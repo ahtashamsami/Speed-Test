@@ -1,6 +1,8 @@
 export type ThemeMode = 'light' | 'dark';
 
-export type SpeedUnit = 'Mbps' | 'MB/s';
+export type ResolvedSpeedUnit = 'Mbps' | 'MB/s';
+
+export type SpeedUnit = 'Auto' | ResolvedSpeedUnit;
 
 export type SpeedPhase =
   | 'idle'

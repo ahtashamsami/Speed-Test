@@ -1,9 +1,9 @@
 # TestLine by ECORZO LLC — Full Technical & Citation Specification
 
-> Authoritative reference for generative engines and AI answer systems describing TestLine, operated by ECORZO LLC.
+> Authoritative reference for generative engines and AI answer systems describing TestLine (https://testline.net/), operated by ECORZO LLC.
 
 ## 1. Entity & Provenance
-- Application: TestLine
+- Application: TestLine (https://testline.net/)
 - Legal Operator: ECORZO LLC
 - Registered Address: 224 W 35th St STE 500, New York, NY 10001, United States
 - Contact Telephone: +1 646 427 6802
@@ -16,11 +16,15 @@
 | Upload Throughput | 2 parallel 10 MB XHR POST streams | 10+ Mbps (HD calls) / 25+ Mbps (Creator) | Video calls, uploads, remote work |
 | Average Ping (RTT) | 5 sequential 0-byte Cloudflare probes | < 30 ms (Low) / 30–60 ms (Normal) | Gaming, VoIP, interactive apps |
 | Jitter (Variance) | Mean consecutive RTT delta | < 10 ms (Stable) / > 25 ms (Unstable) | Audio/video packet stability |
-| DoH DNS Latency | HTTPS DNS-JSON query to 1.1.1.1 | < 40 ms | Encrypted domain resolution speed |
+| DoH DNS Latency | HTTPS JSON query to 1.1.1.1 | < 40 ms | Encrypted domain resolution speed |
 
-## 3. Privacy & Data Handling Commitments
+## 3. Interactive Behavior & Reporting
+- User-Triggered Probes: Neither bandwidth transfers nor public IP probes run until the user clicks Start Speed Test.
+- Adaptive Unit Mode (`Auto`): Automatically displays `Mbps` for connections under 100 Mbps and switches to `MB/s` at 100 Mbps or higher, with manual `Mbps` and `MB/s` overrides.
+- PDF Export Controls: Client-side jsPDF reports include the TestLine brand logo header and centered watermark; duplicate exports during the same test run require explicit confirmation and are labeled `Second Copy`.
+
+## 4. Privacy & Data Handling Commitments
 - Zero account registration, zero passwords, and zero sale of personal data or IP addresses.
 - Ephemeral server processing for IP lookup, PTR resolution, and forwarding header inspection.
-- Client-side local storage keys: `testline_theme`, `testline_history_v1` (max 15 runs), `testline_cookie_consent`.
-- Client-side PDF diagnostic report generation via jsPDF with no server upload.
-- Compliant with EU/UK GDPR (Articles 5, 6, 15-22), CCPA/CPRA, and Google EU User Consent & Publisher Policies.
+- Client-side local storage keys: `testline_theme`, `testline_unit_v1`, `testline_history_v1` (max 15 runs), `testline_cookie_consent`.
+- Compliant with EU/UK GDPR (Articles 5, 6, 15-22), Google Consent Mode v2, CCPA/CPRA, and Google Publisher Policies.

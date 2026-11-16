@@ -1,22 +1,17 @@
 import { ArrowLeft, CheckCircle2, Copy, Check, Mail, MapPin, Phone } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import {
+  CONSENT_CHANGE_EVENT,
+  getStoredConsentPreference,
+  setConsentPreference,
+  type ConsentChoice,
+} from '../utils/consentManager';
 import type { AppPage } from './TopBar';
 
 interface LegalAndInfoPagesProps {
   page: Exclude<AppPage, 'home'>;
   onBackHome: () => void;
   onNavigate: (page: AppPage) => void;
-}
-
-const COOKIE_PREF_KEY = 'testline_cookie_consent';
-
-function loadCookiePreference(): 'all' | 'essential' {
-  try {
-    const val = localStorage.getItem(COOKIE_PREF_KEY);
-    return val === 'essential' ? 'essential' : 'all';
-  } catch {
-    return 'all';
-  }
 }
 
 function PageShell({
@@ -84,8 +79,19 @@ export function LegalAndInfoPages({
   const [contactSent, setContactSent] = useState(false);
   const [copiedField, setCopiedField] = useState<'phone' | 'address' | null>(null);
 
-  const [cookiePref, setCookiePref] = useState<'all' | 'essential'>(loadCookiePreference);
+  const [cookiePref, setCookiePref] = useState<ConsentChoice | null>(getStoredConsentPreference);
   const [cookieSaved, setCookieSaved] = useState(false);
+
+  useEffect(() => {
+    const onConsentChange = (event: Event) => {
+      const detail = (event as CustomEvent<ConsentChoice>).detail;
+      if (detail === 'all' || detail === 'essential') {
+        setCookiePref(detail);
+      }
+    };
+    window.addEventListener(CONSENT_CHANGE_EVENT, onConsentChange);
+    return () => window.removeEventListener(CONSENT_CHANGE_EVENT, onConsentChange);
+  }, []);
 
   const copyContactDetail = async (text: string, field: 'phone' | 'address') => {
     try {
@@ -111,13 +117,9 @@ export function LegalAndInfoPages({
     setContactSent(true);
   };
 
-  const saveCookiePreference = (choice: 'all' | 'essential') => {
+  const saveCookiePreference = (choice: ConsentChoice) => {
     setCookiePref(choice);
-    try {
-      localStorage.setItem(COOKIE_PREF_KEY, choice);
-    } catch {
-      // Ignore
-    }
+    setConsentPreference(choice);
     setCookieSaved(true);
     window.setTimeout(() => setCookieSaved(false), 2000);
   };
@@ -569,6 +571,11 @@ export function LegalAndInfoPages({
                 <td className="py-2.5 pl-4">Remembers Light or Dark mode selection across visits.</td>
               </tr>
               <tr>
+                <td className="py-2.5 pr-4 font-mono">testline_unit_v1</td>
+                <td className="py-2.5 px-4">Essential Preference</td>
+                <td className="py-2.5 pl-4">Stores your selected display unit mode (Auto, Mbps, or MB/s).</td>
+              </tr>
+              <tr>
                 <td className="py-2.5 pr-4 font-mono">testline_history_v1</td>
                 <td className="py-2.5 px-4">Functional Local</td>
                 <td className="py-2.5 pl-4">Stores up to 15 recent speed test results locally in your browser.</td>
@@ -576,18 +583,26 @@ export function LegalAndInfoPages({
               <tr>
                 <td className="py-2.5 pr-4 font-mono">testline_cookie_consent</td>
                 <td className="py-2.5 px-4">Essential Consent</td>
-                <td className="py-2.5 pl-4">Records your cookie and storage preference choice.</td>
+                <td className="py-2.5 pl-4">Records your Google Consent Mode v2 cookie and storage preference.</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <SectionHeading>3. Third-Party &amp; Google Cookie Disclosures</SectionHeading>
+        <SectionHeading>3. Third-Party &amp; Google Policy Disclosures</SectionHeading>
         <p>
-          In accordance with Google EU User Consent Policy and ePrivacy regulations, if optional
-          Google Analytics or Google AdSense tags are active on this property, Google and its
-          partners may set cookies to measure traffic or serve personalized or non-personalized ads
-          only where legally permitted and consented to. You can manage preferences anytime on our{' '}
+          In accordance with Google EU User Consent Policy, Google Consent Mode v2, and ePrivacy
+          regulations, advertising and analytics storage remain denied by default until you opt in.
+          Authorized digital sellers are published at{' '}
+          <a
+            href="/ads.txt"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono text-sky-700 dark:text-sky-400 hover:underline"
+          >
+            /ads.txt
+          </a>
+          . You can update or withdraw consent anytime on our{' '}
           <button
             type="button"
             onClick={() => onNavigate('cookies-notice')}
@@ -621,10 +636,10 @@ export function LegalAndInfoPages({
         <SectionHeading>Notice to Visitors (EEA, UK, Switzerland &amp; Global)</SectionHeading>
         <p>
           TestLine uses strictly necessary browser storage to preserve your Light/Dark display theme,
-          remember your recent benchmark runs locally, and record your consent choices. In
-          accordance with Google policies and EU ePrivacy Directive rules, non-essential analytics or
-          advertising cookies require your clear affirmative choice and can be declined or withdrawn
-          at any time without blocking access to speed testing.
+          remember your preferred speed units and local benchmark history, and record your consent
+          choices. In accordance with Google Consent Mode v2 and EU ePrivacy rules, advertising and
+          analytics storage default to denied until you grant consent, and can be withdrawn anytime
+          without blocking speed testing.
         </p>
 
         <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 space-y-4">
@@ -636,7 +651,11 @@ export function LegalAndInfoPages({
               <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
                 Current setting:{' '}
                 <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">
-                  {cookiePref === 'all' ? 'Essential + Diagnostics & Preferences' : 'Strictly Essential Only'}
+                  {cookiePref === 'all'
+                    ? 'All Granted (Analytics & Ads Consent Mode)'
+                    : cookiePref === 'essential'
+                    ? 'Strictly Essential Only'
+                    : 'Not Yet Selected (Non-Essential Denied by Default)'}
                 </span>
               </p>
             </div>
