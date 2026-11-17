@@ -9,8 +9,10 @@ import { NetworkDiagnosticsSection } from './components/NetworkDiagnosticsSectio
 import { OfflineRunnerGame } from './components/OfflineRunnerGame';
 import { ProxyVpnCard } from './components/ProxyVpnCard';
 import { PAGE_PATHS, TopBar, type AppPage } from './components/TopBar';
+import { parseRouteState } from './data/seoRoutes';
 import { useFeedNotifications } from './hooks/useFeedNotifications';
 import { useInternetStatus } from './hooks/useInternetStatus';
+import { EXTRA_UI_STRINGS } from './i18n/extraStrings';
 import { useI18n } from './i18n/LanguageContext';
 import type {
   NetworkDiagnostics,
@@ -75,37 +77,11 @@ function loadHistory(): TestRunRecord[] {
   }
 }
 
-function parsePageFromLocation(): AppPage {
-  if (typeof window === 'undefined') return 'home';
-  const path = window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/';
-  const hash = window.location.hash.replace(/^#/, '').toLowerCase();
-  const slug = path !== '/' ? path.replace(/^\//, '') : hash;
-
-  switch (slug) {
-    case 'news':
-      return 'news';
-    case 'blog':
-      return 'blog';
-    case 'about':
-      return 'about';
-    case 'privacy':
-    case 'privacy-policy':
-      return 'privacy';
-    case 'contact':
-      return 'contact';
-    case 'disclaimer':
-      return 'disclaimer';
-    case 'terms':
-      return 'terms';
-    case 'cookies-policy':
-      return 'cookies-policy';
-    case 'cookies-notice':
-      return 'cookies-notice';
-    case 'gdpr':
-      return 'gdpr';
-    default:
-      return 'home';
+function readInitialRouteState() {
+  if (typeof window === 'undefined') {
+    return { page: 'home' as AppPage, blogSlug: null as string | null };
   }
+  return parseRouteState(window.location.pathname, window.location.hash);
 }
 
 const INITIAL_NETWORK: NetworkDiagnostics = {
@@ -168,8 +144,10 @@ function DeferredPanelSkeleton({ minHeightClass }: { minHeightClass: string }) {
 }
 
 export default function App() {
-  const { t, applyGeoFromDiagnostics } = useI18n();
-  const [activePage, setActivePage] = useState<AppPage>(parsePageFromLocation);
+  const { t, lang, applyGeoFromDiagnostics } = useI18n();
+  const [initialRoute] = useState(readInitialRouteState);
+  const [activePage, setActivePage] = useState<AppPage>(initialRoute.page);
+  const [activeBlogSlug, setActiveBlogSlug] = useState<string | null>(initialRoute.blogSlug);
   const [theme, setTheme] = useState<ThemeMode>(loadInitialTheme);
   const [unit, setUnit] = useState<SpeedUnit>(loadInitialUnit);
   const [metrics, setMetrics] = useState<SpeedMetrics>(INITIAL_SPEED_METRICS);
@@ -218,14 +196,27 @@ export default function App() {
     latestIpRef.current = network.primaryIp;
   }, [network.primaryIp]);
 
+  const activeBlogPost = useMemo(() => {
+    if (activePage !== 'blog' || !activeBlogSlug) return null;
+    return (
+      allBlogPosts.find(
+        (p) => p.slug.toLowerCase() === activeBlogSlug.toLowerCase() || p.id === activeBlogSlug
+      ) ?? null
+    );
+  }, [activePage, activeBlogSlug, allBlogPosts]);
+
   // Synchronize per-route and localized On-Page & Technical SEO metadata
   useEffect(() => {
-    applyRouteSeo(activePage, t);
-  }, [activePage, t]);
+    const effectivePage: AppPage =
+      activePage === 'blog' && activeBlogSlug && !activeBlogPost ? 'not-found' : activePage;
+    applyRouteSeo(effectivePage, t, activeBlogPost, lang);
+  }, [activePage, activeBlogSlug, activeBlogPost, t, lang]);
 
   useEffect(() => {
     const syncRoute = () => {
-      setActivePage(parsePageFromLocation());
+      const next = parseRouteState(window.location.pathname, window.location.hash);
+      setActivePage(next.page);
+      setActiveBlogSlug(next.blogSlug);
     };
     window.addEventListener('popstate', syncRoute);
     window.addEventListener('hashchange', syncRoute);
@@ -237,11 +228,23 @@ export default function App() {
 
   const navigateTo = useCallback((page: AppPage) => {
     setActivePage(page);
-    const nextPath = PAGE_PATHS[page];
+    setActiveBlogSlug(null);
+    if (page !== 'not-found') {
+      const nextPath = PAGE_PATHS[page];
+      if (window.location.pathname !== nextPath) {
+        window.history.pushState(null, '', nextPath);
+      }
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const selectBlogPost = useCallback((slug: string | null) => {
+    setActivePage('blog');
+    setActiveBlogSlug(slug);
+    const nextPath = slug ? `/blog/${encodeURIComponent(slug)}` : '/blog';
     if (window.location.pathname !== nextPath) {
       window.history.pushState(null, '', nextPath);
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
   const navigateHome = useCallback(() => {
@@ -639,10 +642,61 @@ export default function App() {
           <Suspense fallback={<DeferredPanelSkeleton minHeightClass="min-h-[420px]" />}>
             <BlogPage
               posts={allBlogPosts}
+              activePostSlug={activeBlogSlug}
               highlightedIds={highlightedBlogSet}
+              onSelectPost={selectBlogPost}
               onRunSpeedTest={navigateHome}
             />
           </Suspense>
+        ) : activePage === 'not-found' ? (
+          (() => {
+            const nf = EXTRA_UI_STRINGS[lang]?.notFound ?? EXTRA_UI_STRINGS.en.notFound;
+            return (
+              <section className="max-w-2xl mx-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] p-8 space-y-4">
+                <div className="font-mono text-xs font-semibold text-sky-700 dark:text-sky-400">
+                  {nf.code}
+                </div>
+                <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                  {nf.title}
+                </h1>
+                <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+                  {nf.description}
+                </p>
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <a
+                    href={PAGE_PATHS.home}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigateTo('home');
+                    }}
+                    className="inline-flex items-center min-h-[42px] px-4 py-2 text-xs font-semibold rounded-lg bg-slate-900 text-white dark:bg-sky-500 dark:text-slate-950 hover:opacity-90 transition-colors"
+                  >
+                    {nf.runSpeedTest}
+                  </a>
+                  <a
+                    href={PAGE_PATHS.blog}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigateTo('blog');
+                    }}
+                    className="inline-flex items-center min-h-[42px] px-4 py-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    {nf.readBlogGuides}
+                  </a>
+                  <a
+                    href={PAGE_PATHS.news}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigateTo('news');
+                    }}
+                    className="inline-flex items-center min-h-[42px] px-4 py-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    {nf.readNews}
+                  </a>
+                </div>
+              </section>
+            );
+          })()
         ) : (
           <Suspense fallback={<DeferredPanelSkeleton minHeightClass="min-h-[420px]" />}>
             <LegalAndInfoPages

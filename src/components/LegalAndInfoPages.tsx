@@ -9,10 +9,10 @@ import {
   type ConsentChoice,
 } from '../utils/consentManager';
 import { formatDateLong } from '../utils/formatters';
-import type { AppPage } from './TopBar';
+import type { AppPage, KnownAppPage } from './TopBar';
 
 interface LegalAndInfoPagesProps {
-  page: Exclude<AppPage, 'home'>;
+  page: Exclude<KnownAppPage, 'home' | 'news' | 'blog'>;
   onBackHome: () => void;
   onNavigate: (page: AppPage) => void;
 }

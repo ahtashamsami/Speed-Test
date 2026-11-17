@@ -2,34 +2,14 @@ import { ChevronDown, Languages, Square } from 'lucide-react';
 import { memo, useEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n/LanguageContext';
 import { LANG_METADATA } from '../i18n/localeDetection';
+import {
+  PAGE_PATHS,
+  type AppPage,
+  type KnownAppPage,
+} from '../data/seoRoutes';
 import { PWAInstallButton } from './PWAInstallButton';
 
-export type AppPage =
-  | 'home'
-  | 'news'
-  | 'blog'
-  | 'about'
-  | 'privacy'
-  | 'contact'
-  | 'disclaimer'
-  | 'terms'
-  | 'cookies-policy'
-  | 'cookies-notice'
-  | 'gdpr';
-
-export const PAGE_PATHS: Record<AppPage, string> = {
-  home: '/',
-  news: '/news',
-  blog: '/blog',
-  about: '/about',
-  privacy: '/privacy-policy',
-  contact: '/contact',
-  disclaimer: '/disclaimer',
-  terms: '/terms',
-  'cookies-policy': '/cookies-policy',
-  'cookies-notice': '/cookies-notice',
-  gdpr: '/gdpr',
-};
+export { PAGE_PATHS, type AppPage, type KnownAppPage };
 
 interface TopBarProps {
   isRunning: boolean;
@@ -56,13 +36,13 @@ export const TopBar = memo(function TopBar({
 
   const rotatingTabWords = ['TestLine', t.nav.about, t.nav.privacy] as const;
 
-  const primaryTabs: Array<{ id: AppPage; label: string }> = [
+  const primaryTabs: Array<{ id: KnownAppPage; label: string }> = [
     { id: 'home', label: t.nav.speedTest },
     { id: 'news', label: t.nav.news },
     { id: 'blog', label: t.nav.blog },
   ];
 
-  const companyMenuItems: Array<{ id: AppPage; label: string }> = [
+  const companyMenuItems: Array<{ id: KnownAppPage; label: string }> = [
     { id: 'about', label: t.nav.about },
     { id: 'contact', label: t.nav.contact },
     { id: 'privacy', label: t.nav.privacy },
@@ -108,7 +88,7 @@ export const TopBar = memo(function TopBar({
     };
   }, [dropdownOpen]);
 
-  const handleSelectDropdownPage = (page: AppPage) => {
+  const handleSelectDropdownPage = (page: KnownAppPage) => {
     setDropdownOpen(false);
     onNavigate(page);
   };

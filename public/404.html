@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>404 — Page Not Found | TestLine</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <meta
+      name="description"
+      content="The requested TestLine page could not be found. Return to the internet speed test, public IP lookup, news feed, or network guides."
+    />
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #070b12;
+        color: #f1f5f9;
+        padding: 24px;
+      }
+      .card {
+        max-width: 520px;
+        width: 100%;
+        border: 1px solid #1e293b;
+        background: #0f172a;
+        border-radius: 16px;
+        padding: 32px;
+      }
+      .code {
+        font-family: ui-monospace, SFMono-Regular, monospace;
+        font-size: 13px;
+        color: #38bdf8;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+      }
+      h1 {
+        margin: 10px 0 8px;
+        font-size: 26px;
+        line-height: 1.2;
+      }
+      p {
+        margin: 0 0 24px;
+        color: #94a3b8;
+        line-height: 1.6;
+        font-size: 15px;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      a {
+        display: inline-block;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .primary {
+        background: #38bdf8;
+        color: #070b12;
+      }
+      .secondary {
+        border: 1px solid #334155;
+        color: #e2e8f0;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="code">HTTP 404</div>
+      <h1>Page Not Found</h1>
+      <p>
+        The page you requested does not exist on TestLine. Run a live internet speed test, check
+        your public IP address, or read our engineering guides instead.
+      </p>
+      <div class="actions">
+        <a class="primary" href="/">Run Speed Test</a>
+        <a class="secondary" href="/blog">Read Blog Guides</a>
+        <a class="secondary" href="/news">Security & Network News</a>
+      </div>
+    </main>
+  </body>
+</html>

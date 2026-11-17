@@ -2,7 +2,7 @@ import { Globe } from 'lucide-react';
 import { memo } from 'react';
 import { useI18n } from '../i18n/LanguageContext';
 import { LANG_METADATA, SUPPORTED_LANGS, type SupportedLang } from '../i18n/localeDetection';
-import { PAGE_PATHS, type AppPage } from './TopBar';
+import { PAGE_PATHS, type AppPage, type KnownAppPage } from './TopBar';
 
 interface FooterProps {
   activePage: AppPage;
@@ -12,7 +12,7 @@ interface FooterProps {
 export const Footer = memo(function Footer({ activePage, onNavigate }: FooterProps) {
   const { t, manualOverride, setManualLang } = useI18n();
 
-  const legalLinks: Array<{ id: AppPage; label: string }> = [
+  const legalLinks: Array<{ id: KnownAppPage; label: string }> = [
     { id: 'disclaimer', label: t.footer.disclaimer },
     { id: 'terms', label: t.footer.terms },
     { id: 'cookies-policy', label: t.footer.cookiesPolicy },
@@ -21,7 +21,7 @@ export const Footer = memo(function Footer({ activePage, onNavigate }: FooterPro
     { id: 'privacy', label: t.footer.privacy },
   ];
 
-  const companyLinks: Array<{ id: AppPage; label: string }> = [
+  const companyLinks: Array<{ id: KnownAppPage; label: string }> = [
     { id: 'home', label: t.nav.speedTest },
     { id: 'news', label: t.nav.news },
     { id: 'blog', label: t.nav.blog },

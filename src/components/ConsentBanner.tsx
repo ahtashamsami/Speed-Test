@@ -36,53 +36,53 @@ export const ConsentBanner = memo(function ConsentBanner({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-[2px]">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="consent-popup-title"
-        className="w-full max-w-sm rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] p-6 shadow-xl"
+    <div className="fixed inset-x-0 bottom-0 z-40 px-3 sm:px-6 pb-3 sm:pb-4 pointer-events-none">
+      <section
+        role="region"
+        aria-labelledby="consent-banner-title"
+        className="pointer-events-auto max-w-6xl mx-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-[#0F172A]/95 backdrop-blur-md px-4 py-3.5 sm:px-5 sm:py-4 shadow-lg flex flex-col lg:flex-row lg:items-center justify-between gap-3.5"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-start sm:items-center gap-3 min-w-0">
           <div className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 shrink-0">
-            <ShieldCheck className="w-5 h-5" aria-hidden="true" />
+            <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
           </div>
-          <h2
-            id="consent-popup-title"
-            className="font-display text-base font-semibold text-slate-900 dark:text-slate-100"
-          >
-            {t.consent.title}
-          </h2>
+          <div className="min-w-0">
+            <h2
+              id="consent-banner-title"
+              className="font-display text-sm font-semibold text-slate-900 dark:text-slate-100"
+            >
+              {t.consent.title}
+            </h2>
+            <p className="mt-0.5 text-xs sm:text-[13px] text-slate-600 dark:text-slate-300 leading-relaxed">
+              {t.consent.description}
+            </p>
+          </div>
         </div>
 
-        <p className="mt-3.5 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-          {t.consent.description}
-        </p>
-
-        <div className="mt-5 flex flex-col gap-2.5 w-full">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={() => setConsentPreference('all')}
-            className="w-full min-h-[44px] px-4 py-2.5 text-xs font-semibold rounded-lg bg-black text-white border border-black hover:bg-zinc-900 dark:border-slate-600 dark:hover:bg-zinc-900 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+            className="min-h-[38px] px-3.5 py-2 text-xs font-semibold rounded-lg bg-black text-white border border-black hover:bg-zinc-900 dark:border-slate-600 dark:hover:bg-zinc-900 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
           >
             {t.consent.acceptAll}
           </button>
           <button
             type="button"
             onClick={() => setConsentPreference('essential')}
-            className="w-full min-h-[44px] px-4 py-2.5 text-xs font-medium rounded-lg bg-black text-white border border-black hover:bg-zinc-900 dark:border-slate-700 dark:hover:bg-zinc-900 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+            className="min-h-[38px] px-3.5 py-2 text-xs font-medium rounded-lg bg-black text-white border border-black hover:bg-zinc-900 dark:border-slate-700 dark:hover:bg-zinc-900 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
           >
             {t.consent.essentialOnly}
           </button>
           <button
             type="button"
             onClick={onOpenPreferences}
-            className="w-full min-h-[44px] px-4 py-2.5 text-xs font-medium rounded-lg bg-black text-white border border-black hover:bg-zinc-900 dark:border-slate-700 dark:hover:bg-zinc-900 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+            className="min-h-[38px] px-3.5 py-2 text-xs font-medium rounded-lg bg-black text-white border border-black hover:bg-zinc-900 dark:border-slate-700 dark:hover:bg-zinc-900 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
           >
             {t.consent.cookieSettings}
           </button>
         </div>
-      </div>
+      </section>
     </div>
   );
 });

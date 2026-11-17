@@ -1,5 +1,5 @@
-import type { AppPage } from '../components/TopBar';
 import type { BlogCategory } from '../data/blogPosts';
+import type { KnownAppPage } from '../data/seoRoutes';
 import type { ProxyDetectionResult, ProxySignalCode } from '../types/network';
 import type { SupportedLang } from './localeDetection';
 
@@ -26,7 +26,7 @@ export interface TranslationPack {
     nativeName: string;
   };
   seo: Record<
-    AppPage,
+    KnownAppPage,
     {
       title: string;
       description: string;

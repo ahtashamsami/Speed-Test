@@ -1,7 +1,9 @@
 import { AlertCircle, ExternalLink, Newspaper, RefreshCw, Search } from 'lucide-react';
 import { memo, useCallback, useMemo, useState } from 'react';
 import type { NewsApiResponse } from '../hooks/useFeedNotifications';
+import { EXTRA_UI_STRINGS } from '../i18n/extraStrings';
 import { useI18n } from '../i18n/LanguageContext';
+import { getNewsEditorialNote } from '../utils/newsCommentary';
 
 interface NewsPageProps {
   data: NewsApiResponse | null;
@@ -24,7 +26,8 @@ export const NewsPage = memo(function NewsPage({
   highlightedIds,
   onRefresh,
 }: NewsPageProps) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const editorial = EXTRA_UI_STRINGS[lang]?.newsEditorial ?? EXTRA_UI_STRINGS.en.newsEditorial;
   const [selectedSource, setSelectedSource] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -118,6 +121,16 @@ export const NewsPage = memo(function NewsPage({
             <span>{refreshing ? t.news.refreshing : t.news.refreshFeeds}</span>
           </button>
         </div>
+      </div>
+
+      {/* Original TestLine Editorial Network Impact Context */}
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] px-5 py-4">
+        <h2 className="font-display text-sm font-semibold text-slate-900 dark:text-slate-100">
+          {editorial.overviewTitle}
+        </h2>
+        <p className="mt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+          {editorial.overviewBody}
+        </p>
       </div>
 
       {/* Cached Fallback Notice Banner */}
@@ -283,6 +296,13 @@ export const NewsPage = memo(function NewsPage({
                       {item.summary}
                     </p>
                   )}
+
+                  <p className="pt-2 border-t border-slate-100 dark:border-slate-800/70 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">
+                      {editorial.noteLabel}:
+                    </span>{' '}
+                    {getNewsEditorialNote(item.title, item.summary, lang)}
+                  </p>
                 </div>
 
                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-end">

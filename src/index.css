@@ -4,7 +4,7 @@
 @layer base {
   :root {
     --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
-    --font-sans: 'DM Sans', system-ui, sans-serif;
+    --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
   }
 
