@@ -6,8 +6,10 @@ import { DeferredSection } from './components/DeferredSection';
 import { FastSpeedStage } from './components/FastSpeedStage';
 import { Footer } from './components/Footer';
 import { NetworkDiagnosticsSection } from './components/NetworkDiagnosticsSection';
+import { OfflineRunnerGame } from './components/OfflineRunnerGame';
 import { ProxyVpnCard } from './components/ProxyVpnCard';
 import { PAGE_PATHS, TopBar, type AppPage } from './components/TopBar';
+import { useInternetStatus } from './hooks/useInternetStatus';
 import type {
   NetworkDiagnostics,
   SpeedMetrics,
@@ -158,6 +160,13 @@ export default function App() {
   const [metrics, setMetrics] = useState<SpeedMetrics>(INITIAL_SPEED_METRICS);
   const [network, setNetwork] = useState<NetworkDiagnostics>(INITIAL_NETWORK);
   const [history, setHistory] = useState<TestRunRecord[]>(loadHistory);
+  const {
+    isOnline,
+    checking: checkingConnection,
+    checkConnection,
+    markOffline,
+  } = useInternetStatus();
+  const [showOfflineGame, setShowOfflineGame] = useState<boolean>(() => !isOnline);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [showDuplicatePdfModal, setShowDuplicatePdfModal] = useState(false);
 
@@ -258,7 +267,28 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!isOnline) {
+      setShowOfflineGame(true);
+      if (abortRef.current) {
+        abortRef.current.abort();
+        abortRef.current = null;
+      }
+    }
+  }, [isOnline]);
+
+  const handleReturnToSpeedTest = useCallback(() => {
+    if (isOnline) {
+      setShowOfflineGame(false);
+    }
+  }, [isOnline]);
+
   const startTest = useCallback(async () => {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      markOffline();
+      setShowOfflineGame(true);
+      return;
+    }
     if (abortRef.current) {
       abortRef.current.abort();
     }
@@ -275,6 +305,14 @@ export default function App() {
 
     if (abortRef.current === controller) {
       abortRef.current = null;
+    }
+
+    if (finalResult.phase === 'error') {
+      const reachable = await checkConnection();
+      if (!reachable) {
+        setShowOfflineGame(true);
+      }
+      return;
     }
 
     if (finalResult.phase === 'complete') {
@@ -301,7 +339,7 @@ export default function App() {
         return updated;
       });
     }
-  }, [loadNetwork]);
+  }, [checkConnection, loadNetwork, markOffline]);
 
   useEffect(() => {
     return () => {
@@ -483,13 +521,25 @@ export default function App() {
                 </div>
               </div>
 
-              <FastSpeedStage
-                metrics={metrics}
-                unit={unit}
-                resolvedUnit={resolvedUnit}
-                onStartTest={startTest}
-                onStopTest={stopTest}
-              />
+              {showOfflineGame ? (
+                <OfflineRunnerGame
+                  theme={theme}
+                  isOnline={isOnline}
+                  checkingConnection={checkingConnection}
+                  onCheckConnection={() => {
+                    void checkConnection();
+                  }}
+                  onReturnToSpeedTest={handleReturnToSpeedTest}
+                />
+              ) : (
+                <FastSpeedStage
+                  metrics={metrics}
+                  unit={unit}
+                  resolvedUnit={resolvedUnit}
+                  onStartTest={startTest}
+                  onStopTest={stopTest}
+                />
+              )}
             </section>
 
             {isTestInitiated && (
