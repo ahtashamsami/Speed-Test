@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AppPage } from '../components/TopBar';
 import { BLOG_POSTS, type BlogPost } from '../data/blogPosts';
 
@@ -35,7 +35,18 @@ interface DailyBlogsApiResponse {
 
 const SEEN_NEWS_STORAGE_KEY = 'testline_seen_news_ids_v1';
 const SEEN_BLOG_STORAGE_KEY = 'testline_seen_blog_ids_v1';
+const CACHED_NEWS_STORAGE_KEY = 'testline_cached_news_v1';
+const CACHED_DAILY_BLOGS_STORAGE_KEY = 'testline_cached_daily_blogs_v1';
 const FEED_POLL_INTERVAL_MS = 3 * 60 * 1000;
+
+const CLIENT_RSS_FALLBACK_FEEDS = [
+  { id: 'bleepingcomputer', name: 'Bleeping Computer', url: 'https://www.bleepingcomputer.com/feed/' },
+  { id: 'thehackernews', name: 'The Hacker News', url: 'https://feeds.feedburner.com/TheHackersNews' },
+  { id: 'cloudflare', name: 'Cloudflare Blog', url: 'https://blog.cloudflare.com/rss/' },
+  { id: 'techcrunch', name: 'TechCrunch', url: 'https://techcrunch.com/feed/' },
+  { id: 'krebs', name: 'Krebs on Security', url: 'https://krebsonsecurity.com/feed/' },
+  { id: 'arstechnica', name: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/technology-lab' },
+] as const;
 
 function readStoredIds(key: string): string[] | null {
   try {
@@ -56,13 +67,182 @@ function writeStoredIds(key: string, ids: string[]): void {
   }
 }
 
+function readCachedNews(): NewsApiResponse | null {
+  try {
+    const raw = localStorage.getItem(CACHED_NEWS_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as NewsApiResponse;
+    if (parsed && Array.isArray(parsed.items) && parsed.items.length > 0) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedNews(payload: NewsApiResponse): void {
+  try {
+    localStorage.setItem(CACHED_NEWS_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    // Ignore storage quota/privacy mode failures
+  }
+}
+
+function readCachedDailyBlogs(): BlogPost[] {
+  try {
+    const raw = localStorage.getItem(CACHED_DAILY_BLOGS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as BlogPost[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCachedDailyBlogs(blogs: BlogPost[]): void {
+  try {
+    localStorage.setItem(CACHED_DAILY_BLOGS_STORAGE_KEY, JSON.stringify(blogs));
+  } catch {
+    // Ignore storage quota/privacy mode failures
+  }
+}
+
+function stripHtmlClient(raw: string, maxLen = 220): string {
+  const cleaned = raw
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (cleaned.length <= maxLen) return cleaned;
+  return `${cleaned.slice(0, maxLen - 1).trimEnd()}…`;
+}
+
+function stableClientId(sourceId: string, link: string): string {
+  let hash = 2166136261;
+  for (let i = 0; i < link.length; i++) {
+    hash ^= link.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `${sourceId}:${(hash >>> 0).toString(16)}`;
+}
+
+async function fetchNewsFromApi(forceRefresh: boolean): Promise<NewsApiResponse | null> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), 11000);
+  try {
+    const res = await fetch(forceRefresh ? '/api/news?refresh=1' : '/api/news', {
+      cache: 'no-store',
+      signal: controller.signal,
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) return null;
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('json')) return null;
+    const parsed = (await res.json()) as NewsApiResponse;
+    if (!parsed || !Array.isArray(parsed.items) || parsed.items.length === 0) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
+async function fetchNewsViaClientFallback(): Promise<NewsApiResponse | null> {
+  const results = await Promise.allSettled(
+    CLIENT_RSS_FALLBACK_FEEDS.map(async (feed) => {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 7000);
+      try {
+        const res = await fetch(
+          `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}`,
+          { signal: controller.signal }
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as {
+          status?: string;
+          items?: Array<{
+            title?: string;
+            link?: string;
+            description?: string;
+            content?: string;
+            author?: string;
+            pubDate?: string;
+          }>;
+        };
+        if (data?.status !== 'ok' || !Array.isArray(data.items)) {
+          throw new Error('Invalid feed payload');
+        }
+        const items: NewsItem[] = [];
+        for (const raw of data.items.slice(0, 12)) {
+          const title = stripHtmlClient(raw.title || '', 180);
+          const link = typeof raw.link === 'string' ? raw.link.trim() : '';
+          if (!title || !/^https?:\/\//i.test(link)) continue;
+          const summary = stripHtmlClient(raw.description || raw.content || '', 220);
+          const author = raw.author ? stripHtmlClient(raw.author, 60) || null : null;
+          const utcTs = raw.pubDate ? Date.parse(raw.pubDate.replace(' ', 'T') + 'Z') : NaN;
+          const rawTs = raw.pubDate ? Date.parse(raw.pubDate) : NaN;
+          const publishedTs = Number.isFinite(utcTs)
+            ? utcTs
+            : Number.isFinite(rawTs)
+            ? rawTs
+            : 0;
+          items.push({
+            id: stableClientId(feed.id, link),
+            sourceId: feed.id,
+            sourceName: feed.name,
+            title,
+            link,
+            summary,
+            author,
+            publishedAt: publishedTs > 0 ? new Date(publishedTs).toISOString() : null,
+            publishedTs,
+          });
+        }
+        return { feed, items };
+      } finally {
+        window.clearTimeout(timer);
+      }
+    })
+  );
+
+  const sources: NewsSourceInfo[] = [];
+  const allItems: NewsItem[] = [];
+  results.forEach((result, idx) => {
+    const feed = CLIENT_RSS_FALLBACK_FEEDS[idx];
+    if (result.status === 'fulfilled' && result.value.items.length > 0) {
+      sources.push({ id: feed.id, name: feed.name, ok: true, count: result.value.items.length });
+      allItems.push(...result.value.items);
+    } else {
+      sources.push({ id: feed.id, name: feed.name, ok: false, count: 0 });
+    }
+  });
+
+  if (allItems.length === 0) return null;
+  allItems.sort((a, b) => b.publishedTs - a.publishedTs);
+  return {
+    updatedAt: new Date().toISOString(),
+    sources,
+    items: allItems,
+  };
+}
+
 export function useFeedNotifications(activePage: AppPage, isOnline: boolean) {
-  const [newsData, setNewsData] = useState<NewsApiResponse | null>(null);
-  const [newsLoading, setNewsLoading] = useState(true);
+  const initialCachedNews = useMemo(() => readCachedNews(), []);
+  const [newsData, setNewsData] = useState<NewsApiResponse | null>(initialCachedNews);
+  const [newsLoading, setNewsLoading] = useState<boolean>(() => !initialCachedNews);
   const [newsRefreshing, setNewsRefreshing] = useState(false);
   const [newsError, setNewsError] = useState<string | null>(null);
 
-  const [dailyBlogs, setDailyBlogs] = useState<BlogPost[]>([]);
+  const [dailyBlogs, setDailyBlogs] = useState<BlogPost[]>(() => readCachedDailyBlogs());
   const [dailyBlogsDateKey, setDailyBlogsDateKey] = useState<string | null>(null);
 
   const [seenNewsIds, setSeenNewsIds] = useState<string[] | null>(() =>
@@ -75,44 +255,75 @@ export function useFeedNotifications(activePage: AppPage, isOnline: boolean) {
   const [highlightNewsIds, setHighlightNewsIds] = useState<string[]>([]);
   const [highlightBlogIds, setHighlightBlogIds] = useState<string[]>([]);
 
+  const newsDataRef = useRef<NewsApiResponse | null>(newsData);
+  newsDataRef.current = newsData;
+  const inFlightRef = useRef(false);
+
   const fetchFeedsAndDailyBlogs = useCallback(async (forceRefresh = false) => {
+    if (inFlightRef.current && !forceRefresh) return;
+    inFlightRef.current = true;
+
     if (forceRefresh) {
       setNewsRefreshing(true);
-    } else if (!newsData) {
+    } else if (!newsDataRef.current) {
       setNewsLoading(true);
     }
     setNewsError(null);
 
     try {
-      const [newsRes, blogsRes] = await Promise.all([
-        fetch(forceRefresh ? '/api/news?refresh=1' : '/api/news', { cache: 'no-store' }),
+      const [apiNewsSettled, blogsSettled] = await Promise.allSettled([
+        fetchNewsFromApi(forceRefresh),
         fetch(forceRefresh ? '/api/daily-blogs?refresh=1' : '/api/daily-blogs', {
           cache: 'no-store',
+          headers: { Accept: 'application/json' },
         }),
       ]);
 
-      if (!newsRes.ok) {
-        throw new Error(`Feed API returned status ${newsRes.status}`);
-      }
-      const parsedNews = (await newsRes.json()) as NewsApiResponse;
-      setNewsData(parsedNews);
-
-      if (blogsRes.ok) {
-        const parsedDaily = (await blogsRes.json()) as DailyBlogsApiResponse;
-        if (Array.isArray(parsedDaily.blogs)) {
-          setDailyBlogs(parsedDaily.blogs);
-          setDailyBlogsDateKey(parsedDaily.dateKey ?? null);
+      if (blogsSettled.status === 'fulfilled' && blogsSettled.value.ok) {
+        const contentType = blogsSettled.value.headers.get('content-type') || '';
+        if (contentType.includes('json')) {
+          const parsedDaily = (await blogsSettled.value.json()) as DailyBlogsApiResponse;
+          if (Array.isArray(parsedDaily.blogs)) {
+            setDailyBlogs(parsedDaily.blogs);
+            setDailyBlogsDateKey(parsedDaily.dateKey ?? null);
+            writeCachedDailyBlogs(parsedDaily.blogs);
+          }
         }
       }
+
+      let resolvedNews =
+        apiNewsSettled.status === 'fulfilled' ? apiNewsSettled.value : null;
+
+      if (!resolvedNews) {
+        await new Promise((resolve) => window.setTimeout(resolve, 1000));
+        resolvedNews = await fetchNewsFromApi(forceRefresh);
+      }
+
+      if (!resolvedNews) {
+        resolvedNews = await fetchNewsViaClientFallback();
+      }
+
+      if (resolvedNews && resolvedNews.items.length > 0) {
+        setNewsData(resolvedNews);
+        writeCachedNews(resolvedNews);
+        setNewsError(null);
+      } else if (!newsDataRef.current) {
+        setNewsError(
+          'Unable to load live RSS feeds right now. Check your connection and try refreshing.'
+        );
+      }
     } catch {
-      setNewsError(
-        'Unable to load live RSS feeds right now. Check your connection and try refreshing.'
-      );
+      if (!newsDataRef.current) {
+        setNewsError(
+          'Unable to load live RSS feeds right now. Check your connection and try refreshing.'
+        );
+      }
     } finally {
+      inFlightRef.current = false;
       setNewsLoading(false);
       setNewsRefreshing(false);
     }
-  }, [newsData]);
+  }, []);
 
   useEffect(() => {
     if (!isOnline) return;
@@ -123,9 +334,15 @@ export function useFeedNotifications(activePage: AppPage, isOnline: boolean) {
     }, FEED_POLL_INTERVAL_MS);
 
     return () => window.clearInterval(timer);
-    // Run on mount and online recovery / periodic refresh
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOnline]);
+  }, [isOnline, fetchFeedsAndDailyBlogs]);
+
+  // If the user switches to the News tab while no items are loaded yet, retry immediately
+  useEffect(() => {
+    if (activePage !== 'news' || !isOnline) return;
+    if (!newsData || newsData.items.length === 0 || newsError) {
+      void fetchFeedsAndDailyBlogs(false);
+    }
+  }, [activePage, isOnline, newsData, newsError, fetchFeedsAndDailyBlogs]);
 
   const allBlogPosts = useMemo(() => {
     const merged = [...dailyBlogs, ...BLOG_POSTS];

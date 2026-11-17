@@ -677,14 +677,20 @@ const NEWS_RSS_FEEDS: RssFeedDefinition[] = [
   },
 ];
 
+type NewsPayload = {
+  updatedAt: string;
+  sources: Array<{ id: string; name: string; ok: boolean; count: number }>;
+  items: ParsedNewsItem[];
+};
+
+const NEWS_CACHE_FILE = path.join(os.tmpdir(), 'testline-rss-cache.json');
+
 let cachedNewsPayload: {
   expiresAt: number;
-  payload: {
-    updatedAt: string;
-    sources: Array<{ id: string; name: string; ok: boolean; count: number }>;
-    items: ParsedNewsItem[];
-  };
+  payload: NewsPayload;
 } | null = null;
+
+let inFlightNewsPromise: Promise<NewsPayload> | null = null;
 
 function decodeXmlEntities(input: string): string {
   return input
@@ -780,74 +786,199 @@ function parseFeedXml(xml: string, feed: RssFeedDefinition): ParsedNewsItem[] {
   return items;
 }
 
-async function fetchAggregatedNews(forceRefresh: boolean) {
+async function fetchFeedViaRss2Json(feed: RssFeedDefinition): Promise<ParsedNewsItem[]> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
+  try {
+    const endpoint = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}`;
+    const res = await fetch(endpoint, {
+      signal: controller.signal,
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'Mozilla/5.0 (compatible; TestLineRSS/1.0; +https://testline.net)',
+      },
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as {
+      status?: string;
+      items?: Array<{
+        title?: string;
+        link?: string;
+        description?: string;
+        content?: string;
+        author?: string;
+        pubDate?: string;
+      }>;
+    };
+    if (data?.status !== 'ok' || !Array.isArray(data.items)) return [];
+
+    const mapped: ParsedNewsItem[] = [];
+    for (const raw of data.items.slice(0, 12)) {
+      const title = cleanPlainText(raw.title || '', 180);
+      const link = typeof raw.link === 'string' ? raw.link.trim() : '';
+      if (!title || !/^https?:\/\//i.test(link)) continue;
+      const summary = cleanPlainText(raw.description || raw.content || '', 220);
+      const author = raw.author ? cleanPlainText(raw.author, 60) || null : null;
+      const parsedTs = raw.pubDate ? Date.parse(raw.pubDate.replace(' ', 'T') + 'Z') : NaN;
+      const fallbackTs = raw.pubDate ? Date.parse(raw.pubDate) : NaN;
+      const finalTs = Number.isFinite(parsedTs)
+        ? parsedTs
+        : Number.isFinite(fallbackTs)
+        ? fallbackTs
+        : 0;
+
+      mapped.push({
+        id: `${feed.id}:${crypto.createHash('sha1').update(link).digest('hex').slice(0, 12)}`,
+        sourceId: feed.id,
+        sourceName: feed.name,
+        title,
+        link,
+        summary,
+        author,
+        publishedAt: finalTs > 0 ? new Date(finalTs).toISOString() : null,
+        publishedTs: finalTs,
+      });
+    }
+    return mapped;
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchSingleFeed(feed: RssFeedDefinition): Promise<{ feed: RssFeedDefinition; items: ParsedNewsItem[] }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6500);
+  try {
+    const res = await fetch(feed.url, {
+      signal: controller.signal,
+      redirect: 'follow',
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 TestLineRSS/1.0',
+        Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+    });
+    if (res.ok) {
+      const xml = await res.text();
+      const items = parseFeedXml(xml, feed);
+      if (items.length > 0) {
+        return { feed, items };
+      }
+    }
+  } catch {
+    // Direct RSS request failed or timed out; try fallback below
+  } finally {
+    clearTimeout(timer);
+  }
+
+  const fallbackItems = await fetchFeedViaRss2Json(feed);
+  if (fallbackItems.length > 0) {
+    return { feed, items: fallbackItems };
+  }
+
+  throw new Error(`Unable to fetch RSS items for ${feed.name}`);
+}
+
+async function readNewsCacheFromDisk(): Promise<NewsPayload | null> {
+  try {
+    const raw = await fs.readFile(NEWS_CACHE_FILE, 'utf-8');
+    const parsed = JSON.parse(raw) as NewsPayload;
+    if (parsed && Array.isArray(parsed.items) && parsed.items.length > 0) {
+      return parsed;
+    }
+  } catch {
+    // Cache file may not exist yet
+  }
+  return null;
+}
+
+async function writeNewsCacheToDisk(payload: NewsPayload): Promise<void> {
+  try {
+    await fs.writeFile(NEWS_CACHE_FILE, JSON.stringify(payload), 'utf-8');
+  } catch {
+    // Ignore read-only tmpfs issues cleanly
+  }
+}
+
+async function fetchAggregatedNews(forceRefresh: boolean): Promise<NewsPayload> {
   if (!forceRefresh && cachedNewsPayload && Date.now() < cachedNewsPayload.expiresAt) {
     return cachedNewsPayload.payload;
   }
 
-  const results = await Promise.allSettled(
-    NEWS_RSS_FEEDS.map(async (feed) => {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 4500);
-      try {
-        const res = await fetch(feed.url, {
-          signal: controller.signal,
-          headers: {
-            'User-Agent': 'TestLineRSSAggregator/1.0 (+https://testline.net)',
-            Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml',
-          },
-        });
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-        const xml = await res.text();
-        const items = parseFeedXml(xml, feed);
-        return { feed, items };
-      } finally {
-        clearTimeout(timer);
-      }
-    })
-  );
-
-  const sources: Array<{ id: string; name: string; ok: boolean; count: number }> = [];
-  const allItems: ParsedNewsItem[] = [];
-
-  results.forEach((result, index) => {
-    const feed = NEWS_RSS_FEEDS[index];
-    if (result.status === 'fulfilled') {
-      sources.push({
-        id: feed.id,
-        name: feed.name,
-        ok: true,
-        count: result.value.items.length,
-      });
-      allItems.push(...result.value.items);
-    } else {
-      sources.push({
-        id: feed.id,
-        name: feed.name,
-        ok: false,
-        count: 0,
-      });
-    }
-  });
-
-  allItems.sort((a, b) => b.publishedTs - a.publishedTs);
-
-  const payload = {
-    updatedAt: new Date().toISOString(),
-    sources,
-    items: allItems,
-  };
-
-  if (allItems.length > 0) {
-    cachedNewsPayload = {
-      expiresAt: Date.now() + 10 * 60 * 1000,
-      payload,
-    };
+  if (inFlightNewsPromise) {
+    return inFlightNewsPromise;
   }
 
-  return payload;
+  inFlightNewsPromise = (async () => {
+    const results = await Promise.allSettled(NEWS_RSS_FEEDS.map((feed) => fetchSingleFeed(feed)));
+
+    const sources: Array<{ id: string; name: string; ok: boolean; count: number }> = [];
+    const allItems: ParsedNewsItem[] = [];
+
+    results.forEach((result, index) => {
+      const feed = NEWS_RSS_FEEDS[index];
+      if (result.status === 'fulfilled') {
+        sources.push({
+          id: feed.id,
+          name: feed.name,
+          ok: true,
+          count: result.value.items.length,
+        });
+        allItems.push(...result.value.items);
+      } else {
+        sources.push({
+          id: feed.id,
+          name: feed.name,
+          ok: false,
+          count: 0,
+        });
+      }
+    });
+
+    allItems.sort((a, b) => b.publishedTs - a.publishedTs);
+
+    if (allItems.length > 0) {
+      const payload: NewsPayload = {
+        updatedAt: new Date().toISOString(),
+        sources,
+        items: allItems,
+      };
+      cachedNewsPayload = {
+        expiresAt: Date.now() + 10 * 60 * 1000,
+        payload,
+      };
+      void writeNewsCacheToDisk(payload);
+      return payload;
+    }
+
+    if (cachedNewsPayload?.payload.items.length) {
+      return cachedNewsPayload.payload;
+    }
+
+    const diskPayload = await readNewsCacheFromDisk();
+    if (diskPayload) {
+      cachedNewsPayload = {
+        expiresAt: Date.now() + 2 * 60 * 1000,
+        payload: diskPayload,
+      };
+      return diskPayload;
+    }
+
+    return {
+      updatedAt: new Date().toISOString(),
+      sources,
+      items: [],
+    };
+  })();
+
+  try {
+    return await inFlightNewsPromise;
+  } finally {
+    inFlightNewsPromise = null;
+  }
 }
 
 interface DailyBlogSection {
@@ -1035,6 +1166,12 @@ async function saveDailyBlogsToDisk(posts: DailyBlogPost[]): Promise<void> {
   }
 }
 
+let inFlightDailyBlogsPromise: Promise<{
+  dateKey: string;
+  updatedAt: string;
+  blogs: DailyBlogPost[];
+}> | null = null;
+
 async function ensureDailyHotNewsBlogs(forceRefreshToday = false): Promise<{
   dateKey: string;
   updatedAt: string;
@@ -1052,45 +1189,57 @@ async function ensureDailyHotNewsBlogs(forceRefreshToday = false): Promise<{
     };
   }
 
-  const newsPayload = await fetchAggregatedNews(forceRefreshToday);
-  const previousDays = existing.filter((p) => p.dailyDateKey !== todayKey);
-  const usedUrls = new Set(previousDays.map((p) => p.sourceUrl));
+  if (inFlightDailyBlogsPromise) {
+    return inFlightDailyBlogsPromise;
+  }
 
-  const nowMs = Date.now();
-  const ranked = [...newsPayload.items].sort(
-    (a, b) => scoreHotNewsItem(b, nowMs) - scoreHotNewsItem(a, nowMs)
-  );
+  inFlightDailyBlogsPromise = (async () => {
+    const newsPayload = await fetchAggregatedNews(forceRefreshToday);
+    const previousDays = existing.filter((p) => p.dailyDateKey !== todayKey);
+    const usedUrls = new Set(previousDays.map((p) => p.sourceUrl));
 
-  const freshPool = ranked.filter((item) => !usedUrls.has(item.link));
-  const candidatePool = freshPool.length >= 2 ? freshPool : ranked;
-
-  const picked: ParsedNewsItem[] = [];
-  if (candidatePool.length > 0) {
-    picked.push(candidatePool[0]);
-    const diverseSecond = candidatePool.find(
-      (item, idx) => idx > 0 && item.sourceId !== candidatePool[0].sourceId
+    const nowMs = Date.now();
+    const ranked = [...newsPayload.items].sort(
+      (a, b) => scoreHotNewsItem(b, nowMs) - scoreHotNewsItem(a, nowMs)
     );
-    if (diverseSecond) {
-      picked.push(diverseSecond);
-    } else if (candidatePool.length > 1) {
-      picked.push(candidatePool[1]);
+
+    const freshPool = ranked.filter((item) => !usedUrls.has(item.link));
+    const candidatePool = freshPool.length >= 2 ? freshPool : ranked;
+
+    const picked: ParsedNewsItem[] = [];
+    if (candidatePool.length > 0) {
+      picked.push(candidatePool[0]);
+      const diverseSecond = candidatePool.find(
+        (item, idx) => idx > 0 && item.sourceId !== candidatePool[0].sourceId
+      );
+      if (diverseSecond) {
+        picked.push(diverseSecond);
+      } else if (candidatePool.length > 1) {
+        picked.push(candidatePool[1]);
+      }
     }
+
+    const todayBlogs = picked
+      .slice(0, 2)
+      .map((item, idx) => buildBlogFromNewsItem(item, todayKey, idx));
+
+    const combined = [...todayBlogs, ...previousDays];
+    if (todayBlogs.length > 0) {
+      await saveDailyBlogsToDisk(combined);
+    }
+
+    return {
+      dateKey: todayKey,
+      updatedAt: new Date().toISOString(),
+      blogs: combined,
+    };
+  })();
+
+  try {
+    return await inFlightDailyBlogsPromise;
+  } finally {
+    inFlightDailyBlogsPromise = null;
   }
-
-  const todayBlogs = picked
-    .slice(0, 2)
-    .map((item, idx) => buildBlogFromNewsItem(item, todayKey, idx));
-
-  const combined = [...todayBlogs, ...previousDays];
-  if (todayBlogs.length > 0) {
-    await saveDailyBlogsToDisk(combined);
-  }
-
-  return {
-    dateKey: todayKey,
-    updatedAt: new Date().toISOString(),
-    blogs: combined,
-  };
 }
 
 async function startServer() {

@@ -74,9 +74,6 @@ export const NewsPage = memo(function NewsPage({
           >
             Network, Security &amp; Tech News
           </h1>
-          <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-400 max-w-2xl">
-            Real-time RSS stories pulled live from BleepingComputer, The Hacker News, Cloudflare Blog, TechCrunch, Krebs on Security, and Ars Technica.
-          </p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
