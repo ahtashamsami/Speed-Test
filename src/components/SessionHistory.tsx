@@ -1,5 +1,6 @@
 import { Trash2 } from 'lucide-react';
 import { memo } from 'react';
+import { useI18n } from '../i18n/LanguageContext';
 import type { SpeedUnit, TestRunRecord } from '../types/network';
 import {
   formatLatency,
@@ -19,6 +20,9 @@ export const SessionHistory = memo(function SessionHistory({
   unit,
   onClear,
 }: SessionHistoryProps) {
+  const { t } = useI18n();
+  const displayUnitHeader = unit === 'Auto' ? t.hero.auto : unit;
+
   return (
     <section
       id="history"
@@ -27,10 +31,10 @@ export const SessionHistory = memo(function SessionHistory({
       <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800/80">
         <div>
           <h2 className="font-display text-base font-semibold text-slate-900 dark:text-slate-100">
-            Session Benchmark History
+            {t.history.title}
           </h2>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            Recent measurements saved locally in your browser
+            {t.history.subtitle}
           </p>
         </div>
 
@@ -41,7 +45,7 @@ export const SessionHistory = memo(function SessionHistory({
             className="inline-flex items-center gap-1.5 min-h-[38px] px-3.5 py-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
           >
             <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Clear History</span>
+            <span>{t.history.clearHistory}</span>
           </button>
         )}
       </div>
@@ -49,7 +53,7 @@ export const SessionHistory = memo(function SessionHistory({
       {records.length === 0 ? (
         <div className="py-8 text-center">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Completed speed tests will appear here so you can compare consecutive runs.
+            {t.history.emptyText}
           </p>
         </div>
       ) : (
@@ -57,12 +61,16 @@ export const SessionHistory = memo(function SessionHistory({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-500 dark:text-slate-400">
-                <th className="py-2.5 pr-4">Time</th>
-                <th className="py-2.5 px-4 text-right">Download ({unit})</th>
-                <th className="py-2.5 px-4 text-right">Upload ({unit})</th>
-                <th className="py-2.5 px-4 text-right">Ping (ms)</th>
-                <th className="py-2.5 px-4 text-right">Jitter (ms)</th>
-                <th className="py-2.5 pl-4 text-right">Public IP</th>
+                <th className="py-2.5 pr-4">{t.history.colTime}</th>
+                <th className="py-2.5 px-4 text-right">
+                  {t.history.colDownload} ({displayUnitHeader})
+                </th>
+                <th className="py-2.5 px-4 text-right">
+                  {t.history.colUpload} ({displayUnitHeader})
+                </th>
+                <th className="py-2.5 px-4 text-right">{t.history.colPing}</th>
+                <th className="py-2.5 px-4 text-right">{t.history.colJitter}</th>
+                <th className="py-2.5 pl-4 text-right">{t.history.colPublicIp}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-sm">
@@ -75,9 +83,12 @@ export const SessionHistory = memo(function SessionHistory({
                     className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
                   >
                     <td className="py-3 pr-4 font-mono text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                      {formatTimeShort(rec.timestamp)}
+                      {formatTimeShort(rec.timestamp, t.meta.intlLocale)}
                     </td>
-                    <td className="py-3 px-4 text-right font-mono font-medium text-sky-700 dark:text-sky-300 whitespace-nowrap">
+                    <td
+                      dir="ltr"
+                      className="py-3 px-4 text-right font-mono tabular-nums font-medium text-sky-700 dark:text-sky-300 whitespace-nowrap"
+                    >
                       {formatThroughput(rec.downloadMbps, dlUnit)}
                       {unit === 'Auto' && rec.downloadMbps !== null && (
                         <span className="ml-1 text-xs font-normal text-slate-400 dark:text-slate-500">
@@ -85,7 +96,10 @@ export const SessionHistory = memo(function SessionHistory({
                         </span>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-right font-mono font-medium text-teal-700 dark:text-teal-300 whitespace-nowrap">
+                    <td
+                      dir="ltr"
+                      className="py-3 px-4 text-right font-mono tabular-nums font-medium text-teal-700 dark:text-teal-300 whitespace-nowrap"
+                    >
                       {formatThroughput(rec.uploadMbps, ulUnit)}
                       {unit === 'Auto' && rec.uploadMbps !== null && (
                         <span className="ml-1 text-xs font-normal text-slate-400 dark:text-slate-500">
@@ -93,13 +107,22 @@ export const SessionHistory = memo(function SessionHistory({
                         </span>
                       )}
                     </td>
-                  <td className="py-3 px-4 text-right font-mono text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                    {formatLatency(rec.pingMs)}
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                    {formatLatency(rec.jitterMs)}
-                  </td>
-                    <td className="py-3 pl-4 text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                    <td
+                      dir="ltr"
+                      className="py-3 px-4 text-right font-mono tabular-nums text-slate-800 dark:text-slate-200 whitespace-nowrap"
+                    >
+                      {formatLatency(rec.pingMs)}
+                    </td>
+                    <td
+                      dir="ltr"
+                      className="py-3 px-4 text-right font-mono tabular-nums text-slate-600 dark:text-slate-400 whitespace-nowrap"
+                    >
+                      {formatLatency(rec.jitterMs)}
+                    </td>
+                    <td
+                      dir="ltr"
+                      className="py-3 pl-4 text-right font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap"
+                    >
                       {rec.ip ?? '—'}
                     </td>
                   </tr>

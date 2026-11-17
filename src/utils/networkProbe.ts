@@ -2,6 +2,7 @@ import type {
   BrowserConnectionHint,
   NetworkDiagnostics,
   ProxyDetectionResult,
+  ProxySignalEntry,
 } from '../types/network';
 
 interface ServerProxyDetection {
@@ -25,6 +26,7 @@ interface ServerNetworkResponse {
   region: string | null;
   country: string | null;
   countryCode: string | null;
+  continentCode?: string | null;
   timezone: string | null;
   protocol: string | null;
   httpVersion: string | null;
@@ -39,6 +41,7 @@ interface IpWhoIsResponse {
   region?: string;
   country?: string;
   country_code?: string;
+  continent_code?: string;
   isp?: string;
   org?: string;
   connection?: {
@@ -73,6 +76,7 @@ interface ClientGeoResult {
   region: string | null;
   country: string | null;
   countryCode: string | null;
+  continentCode: string | null;
   timezone: string | null;
 }
 
@@ -124,6 +128,7 @@ async function fetchClientGeoMetadata(): Promise<ClientGeoResult> {
       region: ipWho.region || null,
       country: ipWho.country || null,
       countryCode: ipWho.country_code || null,
+      continentCode: ipWho.continent_code || null,
       timezone: ipWho.timezone?.id || null,
     };
   }
@@ -146,6 +151,7 @@ async function fetchClientGeoMetadata(): Promise<ClientGeoResult> {
       region: geoJs.region || null,
       country: geoJs.country || null,
       countryCode: geoJs.country_code || null,
+      continentCode: null,
       timezone: geoJs.timezone || null,
     };
   }
@@ -159,6 +165,7 @@ async function fetchClientGeoMetadata(): Promise<ClientGeoResult> {
     region: null,
     country: null,
     countryCode: null,
+    continentCode: null,
     timezone: null,
   };
 }
@@ -227,29 +234,41 @@ function buildProxyDetection(
   );
 
   const signals: string[] = [];
+  const signalEntries: ProxySignalEntry[] = [];
 
   if (serverProxy?.proxyFlag) {
     signals.push('IP address is flagged as an active proxy, VPN, or Tor exit');
+    signalEntries.push({ code: 'proxy_flag' });
   }
   if (serverProxy?.hostingFlag) {
     signals.push('Traffic originates from a datacenter / hosting ASN rather than a residential ISP');
+    signalEntries.push({ code: 'hosting_flag' });
   }
   if (serverProxy?.matchedProviderSignal) {
     signals.push(`Network operator / PTR matches relay keyword (${serverProxy.matchedProviderSignal})`);
+    signalEntries.push({ code: 'provider_keyword', arg1: serverProxy.matchedProviderSignal });
   }
   if (serverProxy?.viaHeader) {
     signals.push(`Proxy forwarding header detected (${serverProxy.viaHeader})`);
+    signalEntries.push({ code: 'via_header', arg1: serverProxy.viaHeader });
   }
   if ((serverProxy?.forwardedHopCount ?? 0) > 2) {
     signals.push(`Multiple forwarding hops observed (${serverProxy?.forwardedHopCount} hops)`);
+    signalEntries.push({ code: 'multi_hop', arg1: String(serverProxy?.forwardedHopCount) });
   }
   if (ipMismatch) {
     signals.push('Direct browser IP differs from edge-observed IP (split-tunnel or proxy routing)');
+    signalEntries.push({ code: 'ip_mismatch' });
   }
   if (timezoneMismatch) {
     signals.push(
       `Browser timezone (${browserTimezone}) differs from IP geolocation timezone (${apiTimezone})`
     );
+    signalEntries.push({
+      code: 'timezone_mismatch',
+      arg1: browserTimezone ?? '',
+      arg2: apiTimezone ?? '',
+    });
   }
 
   const isProxyOrVpn = Boolean(serverProxy?.isProxyOrVpn || ipMismatch);
@@ -284,13 +303,19 @@ function buildProxyDetection(
     forwardedHopCount: serverProxy?.forwardedHopCount ?? 0,
     matchedProviderSignal: serverProxy?.matchedProviderSignal ?? null,
     signals,
+    signalEntries,
   };
 }
 
 async function executeDiagnosticsFetch(): Promise<NetworkDiagnostics> {
+  const browserTz = getBrowserTimezone();
+  const networkInfoUrl = browserTz
+    ? `/api/network-info?tz=${encodeURIComponent(browserTz)}`
+    : '/api/network-info';
+
   const [clientGeo, serverInfo, ipv4Probe, ipv6Probe, dohProbe] = await Promise.all([
     fetchClientGeoMetadata(),
-    fetchJsonWithTimeout<ServerNetworkResponse>('/api/network-info', 4500),
+    fetchJsonWithTimeout<ServerNetworkResponse>(networkInfoUrl, 6000),
     fetchJsonWithTimeout<{ ip?: string }>('https://api.ipify.org?format=json', 3000),
     fetchJsonWithTimeout<{ ip?: string }>('https://api6.ipify.org?format=json', 2500),
     probeDohResolver(),
@@ -325,6 +350,7 @@ async function executeDiagnosticsFetch(): Promise<NetworkDiagnostics> {
   const region = clientGeo.region || serverInfo?.region || null;
   const country = clientGeo.country || serverInfo?.country || null;
   const countryCode = clientGeo.countryCode || serverInfo?.countryCode || null;
+  const continentCode = clientGeo.continentCode || serverInfo?.continentCode || null;
 
   const apiTimezone = clientGeo.timezone || serverInfo?.timezone || null;
   const timezone = apiTimezone || getBrowserTimezone();
@@ -351,6 +377,7 @@ async function executeDiagnosticsFetch(): Promise<NetworkDiagnostics> {
     region,
     country,
     countryCode,
+    continentCode,
     timezone,
     ptrHostname: serverInfo?.ptrHostname ?? null,
     dohReachable: dohProbe.reachable,
@@ -403,3 +430,4 @@ export async function fetchNetworkDiagnostics(
   inFlightDiagnosticsPromise = promise;
   return promise;
 }
+

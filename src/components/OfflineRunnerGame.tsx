@@ -11,6 +11,7 @@ import {
   WifiOff,
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { useI18n } from '../i18n/LanguageContext';
 import type { ThemeMode } from '../types/network';
 
 type GameState = 'TITLE_MENU' | 'PLAYING' | 'PAUSED' | 'GAME_OVER';
@@ -69,6 +70,7 @@ export const OfflineRunnerGame = memo(function OfflineRunnerGame({
   onCheckConnection,
   onReturnToSpeedTest,
 }: OfflineRunnerGameProps) {
+  const { t } = useI18n();
   const [gameState, setGameState] = useState<GameState>('TITLE_MENU');
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState<number>(loadHighScore);
@@ -614,12 +616,12 @@ export const OfflineRunnerGame = memo(function OfflineRunnerGame({
           {isOnline ? (
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-400">
               <Wifi className="w-4 h-4 shrink-0" aria-hidden="true" />
-              <span>Internet Restored</span>
+              <span>{t.game.internetRestored}</span>
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
               <WifiOff className="w-4 h-4 shrink-0" aria-hidden="true" />
-              <span>Offline Mode — Internet Disconnected</span>
+              <span>{t.game.offlineMode}</span>
             </span>
           )}
 
@@ -627,23 +629,21 @@ export const OfflineRunnerGame = memo(function OfflineRunnerGame({
             ·
           </span>
           <span className="text-xs text-slate-500 dark:text-slate-400">
-            {isOnline
-              ? 'Connection is active again'
-              : 'Play Signal Runner while waiting to reconnect'}
+            {isOnline ? t.game.connectionActive : t.game.playWhileWaiting}
           </span>
         </div>
 
         <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 sm:gap-3">
           <div className="flex items-center gap-3 font-mono text-xs sm:text-sm">
             <span className="text-slate-500 dark:text-slate-400">
-              Score{' '}
-              <strong className="font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
+              {t.game.score}{' '}
+              <strong dir="ltr" className="font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
                 {String(score).padStart(4, '0')}
               </strong>
             </span>
             <span className="text-slate-500 dark:text-slate-400">
-              Best{' '}
-              <strong className="font-semibold text-sky-700 dark:text-sky-400 tabular-nums">
+              {t.game.best}{' '}
+              <strong dir="ltr" className="font-semibold text-sky-700 dark:text-sky-400 tabular-nums">
                 {String(highScore).padStart(4, '0')}
               </strong>
             </span>
@@ -653,8 +653,8 @@ export const OfflineRunnerGame = memo(function OfflineRunnerGame({
             <button
               type="button"
               onClick={() => setSoundEnabled((v) => !v)}
-              aria-label={soundEnabled ? 'Mute game sound' : 'Unmute game sound'}
-              title={soundEnabled ? 'Mute sound' : 'Enable sound'}
+              aria-label={soundEnabled ? t.game.muteAria : t.game.unmuteAria}
+              title={soundEnabled ? t.game.muteAria : t.game.unmuteAria}
               className="min-w-[40px] min-h-[40px] inline-flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
             >
               {soundEnabled ? (
@@ -668,8 +668,8 @@ export const OfflineRunnerGame = memo(function OfflineRunnerGame({
               <button
                 type="button"
                 onClick={togglePause}
-                aria-label={gameState === 'PAUSED' ? 'Resume game' : 'Pause game'}
-                title={gameState === 'PAUSED' ? 'Resume (P)' : 'Pause (P)'}
+                aria-label={gameState === 'PAUSED' ? t.game.resumeAria : t.game.pauseAria}
+                title={gameState === 'PAUSED' ? t.game.resumeAria : t.game.pauseAria}
                 className="min-w-[40px] min-h-[40px] inline-flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
               >
                 {gameState === 'PAUSED' ? (
@@ -686,7 +686,7 @@ export const OfflineRunnerGame = memo(function OfflineRunnerGame({
                 onClick={onReturnToSpeedTest}
                 className="min-h-[40px] px-3 py-2 text-xs font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-800 dark:bg-sky-500 dark:text-slate-950 dark:hover:bg-sky-400 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
               >
-                Return to Speed Test
+                {t.game.returnToSpeedTest}
               </button>
             ) : (
               <button
@@ -699,7 +699,7 @@ export const OfflineRunnerGame = memo(function OfflineRunnerGame({
                   className={`w-3.5 h-3.5 ${checkingConnection ? 'animate-spin' : ''}`}
                   aria-hidden="true"
                 />
-                <span>{checkingConnection ? 'Checking...' : 'Check Connection'}</span>
+                <span>{checkingConnection ? t.game.checking : t.game.checkConnection}</span>
               </button>
             )}
           </div>
@@ -718,17 +718,17 @@ export const OfflineRunnerGame = memo(function OfflineRunnerGame({
             triggerJump();
           }}
           style={{ touchAction: 'none' }}
-          aria-label="Offline Signal Runner jump and run game canvas"
+          aria-label={t.game.canvasAria}
           className="block w-full cursor-pointer"
         />
 
         {gameState === 'TITLE_MENU' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-white/75 dark:bg-[#0B1220]/75 backdrop-blur-[2px]">
             <h2 className="font-display text-lg sm:text-xl font-bold text-slate-900 dark:text-slate-100">
-              Signal Runner
+              {t.game.title}
             </h2>
             <p className="mt-1.5 text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-md">
-              Jump over towers, spikes, and drones until your internet returns. Double-jump is enabled.
+              {t.game.subtitle}
             </p>
             <button
               type="button"
@@ -736,10 +736,10 @@ export const OfflineRunnerGame = memo(function OfflineRunnerGame({
               className="mt-4 inline-flex items-center gap-2 min-h-[44px] px-5 py-2.5 text-xs sm:text-sm font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-800 dark:bg-sky-500 dark:text-slate-950 dark:hover:bg-sky-400 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
             >
               <Play className="w-4 h-4 fill-current" aria-hidden="true" />
-              <span>Start Game</span>
+              <span>{t.game.startGame}</span>
             </button>
             <p className="mt-2.5 text-xs text-slate-500 dark:text-slate-400">
-              Tap screen or press Space / Up Arrow to jump
+              {t.game.tapHint}
             </p>
           </div>
         )}
@@ -747,7 +747,7 @@ export const OfflineRunnerGame = memo(function OfflineRunnerGame({
         {gameState === 'PAUSED' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-white/75 dark:bg-[#0B1220]/75 backdrop-blur-[2px]">
             <h2 className="font-display text-lg font-bold text-slate-900 dark:text-slate-100">
-              Game Paused
+              {t.game.paused}
             </h2>
             <button
               type="button"
@@ -755,7 +755,7 @@ export const OfflineRunnerGame = memo(function OfflineRunnerGame({
               className="mt-4 inline-flex items-center gap-2 min-h-[44px] px-5 py-2.5 text-xs sm:text-sm font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-800 dark:bg-sky-500 dark:text-slate-950 dark:hover:bg-sky-400 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
             >
               <Play className="w-4 h-4 fill-current" aria-hidden="true" />
-              <span>Resume</span>
+              <span>{t.game.resume}</span>
             </button>
           </div>
         )}
@@ -763,20 +763,23 @@ export const OfflineRunnerGame = memo(function OfflineRunnerGame({
         {gameState === 'GAME_OVER' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center bg-white/82 dark:bg-[#0B1220]/82 backdrop-blur-[2px]">
             <h2 className="font-display text-lg sm:text-xl font-bold text-slate-900 dark:text-slate-100">
-              Signal Interrupted
+              {t.game.gameOver}
             </h2>
             <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-xs sm:text-sm font-mono text-slate-700 dark:text-slate-300">
               <span>
-                Score: <strong className="text-slate-900 dark:text-slate-100">{score}</strong>
+                {t.game.score}: <strong className="text-slate-900 dark:text-slate-100">{score}</strong>
               </span>
               <span aria-hidden="true">·</span>
               <span>
-                Cleared: <strong className="text-slate-900 dark:text-slate-100">{obstaclesCleared}</strong>
+                {t.game.cleared}{' '}
+                <strong className="text-slate-900 dark:text-slate-100">{obstaclesCleared}</strong>
               </span>
               {isNewBest && (
                 <>
                   <span aria-hidden="true">·</span>
-                  <span className="font-semibold text-amber-600 dark:text-amber-400">New Best!</span>
+                  <span className="font-semibold text-amber-600 dark:text-amber-400">
+                    {t.game.newBest}
+                  </span>
                 </>
               )}
             </div>
@@ -788,7 +791,7 @@ export const OfflineRunnerGame = memo(function OfflineRunnerGame({
                 className="inline-flex items-center gap-2 min-h-[44px] px-5 py-2.5 text-xs sm:text-sm font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-800 dark:bg-sky-500 dark:text-slate-950 dark:hover:bg-sky-400 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
               >
                 <RotateCcw className="w-4 h-4" aria-hidden="true" />
-                <span>Play Again</span>
+                <span>{t.game.playAgain}</span>
               </button>
 
               {isOnline && (
@@ -798,7 +801,7 @@ export const OfflineRunnerGame = memo(function OfflineRunnerGame({
                   className="inline-flex items-center gap-2 min-h-[44px] px-4 py-2.5 text-xs sm:text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
                 >
                   <Wifi className="w-4 h-4 text-teal-600 dark:text-teal-400" aria-hidden="true" />
-                  <span>Back to Speed Test</span>
+                  <span>{t.game.backToSpeedTest}</span>
                 </button>
               )}
             </div>
@@ -819,7 +822,7 @@ export const OfflineRunnerGame = memo(function OfflineRunnerGame({
             className="inline-flex items-center justify-center gap-2 min-h-[48px] sm:min-h-[44px] px-5 py-2.5 text-xs sm:text-sm font-semibold rounded-xl bg-slate-900 text-white active:scale-[0.98] hover:bg-slate-800 dark:bg-sky-500 dark:text-slate-950 dark:hover:bg-sky-400 transition-all whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
           >
             <ArrowUp className="w-4 h-4" aria-hidden="true" />
-            <span>{gameState === 'GAME_OVER' ? 'Play Again' : 'Jump'}</span>
+            <span>{gameState === 'GAME_OVER' ? t.game.playAgain : t.game.jump}</span>
           </button>
 
           <button
@@ -832,13 +835,14 @@ export const OfflineRunnerGame = memo(function OfflineRunnerGame({
             className="inline-flex items-center justify-center gap-2 min-h-[48px] sm:min-h-[44px] px-4 py-2.5 text-xs sm:text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 active:scale-[0.98] hover:bg-slate-100 dark:hover:bg-slate-800 transition-all whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
           >
             <ArrowDown className="w-4 h-4" aria-hidden="true" />
-            <span>Fast Drop</span>
+            <span>{t.game.fastDrop}</span>
           </button>
         </div>
 
         <p className="text-xs text-slate-500 dark:text-slate-400 text-center sm:text-right">
-          Desktop: <span className="font-mono">Space / ↑</span> Jump ·{' '}
-          <span className="font-mono">↓</span> Drop · <span className="font-mono">P</span> Pause
+          {t.game.desktopHintPrefix} <span className="font-mono">Space / ↑</span> {t.game.desktopJump}{' '}
+          · <span className="font-mono">↓</span> {t.game.desktopDrop} ·{' '}
+          <span className="font-mono">P</span> {t.game.desktopPause}
         </p>
       </div>
     </div>

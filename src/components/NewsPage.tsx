@@ -1,6 +1,7 @@
 import { AlertCircle, ExternalLink, Newspaper, RefreshCw, Search } from 'lucide-react';
-import { memo, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import type { NewsApiResponse } from '../hooks/useFeedNotifications';
+import { useI18n } from '../i18n/LanguageContext';
 
 interface NewsPageProps {
   data: NewsApiResponse | null;
@@ -13,21 +14,6 @@ interface NewsPageProps {
   onRefresh: () => void;
 }
 
-function formatPublishedDate(iso: string | null): string {
-  if (!iso) return 'Recent';
-  const ts = Date.parse(iso);
-  if (!Number.isFinite(ts)) return 'Recent';
-  const diffMin = Math.floor((Date.now() - ts) / 60000);
-  if (diffMin >= 0 && diffMin < 60) return `${Math.max(1, diffMin)}m ago`;
-  const diffHr = Math.floor(diffMin / 60);
-  if (diffHr >= 1 && diffHr < 24) return `${diffHr}h ago`;
-  return new Date(ts).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-
 export const NewsPage = memo(function NewsPage({
   data,
   loading,
@@ -38,8 +24,31 @@ export const NewsPage = memo(function NewsPage({
   highlightedIds,
   onRefresh,
 }: NewsPageProps) {
+  const { t } = useI18n();
   const [selectedSource, setSelectedSource] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  const formatPublishedDate = useCallback(
+    (iso: string | null): string => {
+      if (!iso) return t.news.recent;
+      const ts = Date.parse(iso);
+      if (!Number.isFinite(ts)) return t.news.recent;
+      const diffMin = Math.floor((Date.now() - ts) / 60000);
+      if (diffMin >= 0 && diffMin < 60) {
+        return t.news.minutesAgo.replace('{n}', String(Math.max(1, diffMin)));
+      }
+      const diffHr = Math.floor(diffMin / 60);
+      if (diffHr >= 1 && diffHr < 24) {
+        return t.news.hoursAgo.replace('{n}', String(diffHr));
+      }
+      return new Date(ts).toLocaleDateString(t.meta.intlLocale, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    },
+    [t.meta.intlLocale, t.news.hoursAgo, t.news.minutesAgo, t.news.recent]
+  );
 
   const filteredItems = useMemo(() => {
     const items = data?.items ?? [];
@@ -62,12 +71,12 @@ export const NewsPage = memo(function NewsPage({
         <div>
           <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
             <Newspaper className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" aria-hidden="true" />
-            <span>Live Cybersecurity &amp; Tech RSS Aggregator</span>
+            <span>{t.news.eyebrow}</span>
             {data?.updatedAt && (
               <>
                 <span aria-hidden="true">·</span>
                 <span className="font-mono">
-                  Updated {formatPublishedDate(data.updatedAt)}
+                  {t.news.updatedPrefix} {formatPublishedDate(data.updatedAt)}
                 </span>
               </>
             )}
@@ -76,7 +85,7 @@ export const NewsPage = memo(function NewsPage({
             style={{ textWrap: 'balance' }}
             className="mt-1.5 font-display text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100"
           >
-            Network, Security &amp; Tech News
+            {t.news.title}
           </h1>
         </div>
 
@@ -90,8 +99,8 @@ export const NewsPage = memo(function NewsPage({
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Filter headlines..."
-              aria-label="Filter news headlines"
+              placeholder={t.news.filterPlaceholder}
+              aria-label={t.news.filterAria}
               className="w-full min-h-[42px] pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
             />
           </div>
@@ -106,7 +115,7 @@ export const NewsPage = memo(function NewsPage({
               className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`}
               aria-hidden="true"
             />
-            <span>{refreshing ? 'Refreshing...' : 'Refresh Feeds'}</span>
+            <span>{refreshing ? t.news.refreshing : t.news.refreshFeeds}</span>
           </button>
         </div>
       </div>
@@ -123,7 +132,7 @@ export const NewsPage = memo(function NewsPage({
               aria-hidden="true"
             />
             <span>
-              Live RSS feeds are currently unreachable. Showing recently cached stories saved on this device
+              {t.news.cachedBannerPrefix}
               {cachedSavedAt ? ` (${formatPublishedDate(cachedSavedAt)})` : ''}.
             </span>
           </div>
@@ -134,7 +143,7 @@ export const NewsPage = memo(function NewsPage({
             className="inline-flex items-center justify-center gap-1.5 min-h-[34px] px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-white dark:bg-sky-500 dark:text-slate-950 hover:opacity-90 disabled:opacity-50 whitespace-nowrap shrink-0 cursor-pointer"
           >
             <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} aria-hidden="true" />
-            <span>{refreshing ? 'Retrying...' : 'Retry Live Feeds'}</span>
+            <span>{refreshing ? t.news.retrying : t.news.retryLive}</span>
           </button>
         </div>
       )}
@@ -143,7 +152,7 @@ export const NewsPage = memo(function NewsPage({
       {data?.sources && data.sources.length > 0 && (
         <div
           role="tablist"
-          aria-label="RSS news sources"
+          aria-label={t.news.allSources}
           className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A]"
         >
           <button
@@ -157,7 +166,7 @@ export const NewsPage = memo(function NewsPage({
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
             }`}
           >
-            All Sources ({data.items.length})
+            {t.news.allSources} ({data.items.length})
           </button>
 
           {data.sources.map((src) => {
@@ -203,20 +212,20 @@ export const NewsPage = memo(function NewsPage({
               className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5"
               aria-hidden="true"
             />
-            <p className="text-sm text-slate-800 dark:text-slate-200">{error}</p>
+            <p className="text-sm text-slate-800 dark:text-slate-200">{t.news.errorFallback}</p>
           </div>
           <button
             type="button"
             onClick={onRefresh}
             className="min-h-[40px] px-4 py-2 text-xs font-semibold rounded-lg bg-slate-900 text-white dark:bg-sky-500 dark:text-slate-950 whitespace-nowrap shrink-0 cursor-pointer"
           >
-            Try Again
+            {t.news.tryAgain}
           </button>
         </div>
       ) : filteredItems.length === 0 ? (
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] p-8 text-center space-y-3">
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            No matching stories found in the current RSS feeds.
+            {t.news.emptyText}
           </p>
           <button
             type="button"
@@ -226,7 +235,7 @@ export const NewsPage = memo(function NewsPage({
             }}
             className="min-h-[40px] px-4 py-2 text-xs font-medium rounded-lg bg-slate-900 text-white dark:bg-sky-500 dark:text-slate-950 cursor-pointer"
           >
-            Show All Feeds
+            {t.news.showAll}
           </button>
         </div>
       ) : (
@@ -242,7 +251,7 @@ export const NewsPage = memo(function NewsPage({
                   <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                     {isNew && (
                       <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wide bg-rose-600 text-white">
-                        New
+                        {t.news.newTag}
                       </span>
                     )}
                     <span className="font-semibold text-sky-700 dark:text-sky-400">
@@ -283,7 +292,7 @@ export const NewsPage = memo(function NewsPage({
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 text-xs font-semibold rounded-lg text-sky-700 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors whitespace-nowrap shrink-0"
                   >
-                    <span>Read Full Story</span>
+                    <span>{t.news.readFullStory}</span>
                     <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
                   </a>
                 </div>

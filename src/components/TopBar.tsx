@@ -1,5 +1,7 @@
-import { ChevronDown, Square } from 'lucide-react';
+import { ChevronDown, Languages, Square } from 'lucide-react';
 import { memo, useEffect, useRef, useState } from 'react';
+import { useI18n } from '../i18n/LanguageContext';
+import { LANG_METADATA } from '../i18n/localeDetection';
 import { PWAInstallButton } from './PWAInstallButton';
 
 export type AppPage =
@@ -46,23 +48,24 @@ export const TopBar = memo(function TopBar({
   onNavigate,
   onStopTest,
 }: TopBarProps) {
+  const { t, lang, geoLang, setManualLang } = useI18n();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [tabWordIndex, setTabWordIndex] = useState(0);
   const desktopMenuRef = useRef<HTMLDivElement | null>(null);
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const rotatingTabWords = ['TestLine', 'About', 'Privacy'] as const;
+  const rotatingTabWords = ['TestLine', t.nav.about, t.nav.privacy] as const;
 
   const primaryTabs: Array<{ id: AppPage; label: string }> = [
-    { id: 'home', label: 'Speed Test' },
-    { id: 'news', label: 'News' },
-    { id: 'blog', label: 'Blog' },
+    { id: 'home', label: t.nav.speedTest },
+    { id: 'news', label: t.nav.news },
+    { id: 'blog', label: t.nav.blog },
   ];
 
   const companyMenuItems: Array<{ id: AppPage; label: string }> = [
-    { id: 'about', label: 'About' },
-    { id: 'contact', label: 'Contact' },
-    { id: 'privacy', label: 'Privacy Policy' },
+    { id: 'about', label: t.nav.about },
+    { id: 'contact', label: t.nav.contact },
+    { id: 'privacy', label: t.nav.privacy },
   ];
 
   const isCompanyPageActive =
@@ -112,14 +115,14 @@ export const TopBar = memo(function TopBar({
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-[#070B12]/95 backdrop-blur-sm">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 min-h-[68px] sm:min-h-[88px] flex items-center justify-between gap-4 sm:gap-7">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 min-h-[68px] sm:min-h-[88px] flex items-center justify-between gap-2.5 sm:gap-6">
         <a
           href={PAGE_PATHS.home}
           onClick={(e) => {
             e.preventDefault();
             onNavigate('home');
           }}
-          aria-label="TestLine Home"
+          aria-label={t.nav.homeAria}
           className="inline-flex items-center min-h-[38px] py-0.5 px-1 -mx-1 whitespace-nowrap shrink-0 rounded-lg transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
         >
           <img
@@ -146,7 +149,7 @@ export const TopBar = memo(function TopBar({
 
         {/* Desktop Primary Tabs + Company Dropdown */}
         <nav
-          aria-label="Primary pages"
+          aria-label={t.nav.primaryNavAria}
           className="hidden md:flex items-center gap-3.5 lg:gap-6 text-sm font-medium text-slate-600 dark:text-slate-400"
         >
           {primaryTabs.map((item) => {
@@ -166,7 +169,9 @@ export const TopBar = memo(function TopBar({
                   onNavigate(item.id);
                 }}
                 aria-current={active ? 'page' : undefined}
-                aria-label={badgeCount > 0 ? `${item.label} (${badgeCount} new)` : undefined}
+                aria-label={
+                  badgeCount > 0 ? `${item.label} (${badgeCount} ${t.nav.newBadgeSuffix})` : undefined
+                }
                 className={`inline-flex items-center min-h-[38px] px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap shrink-0 ${
                   active
                     ? 'text-slate-900 dark:text-slate-100 font-semibold'
@@ -192,7 +197,7 @@ export const TopBar = memo(function TopBar({
               onClick={() => setDropdownOpen((open) => !open)}
               aria-expanded={dropdownOpen}
               aria-haspopup="menu"
-              aria-label="TestLine menu: About, Contact, and Privacy Policy"
+              aria-label={t.nav.companyMenuAria}
               className={`inline-flex items-center gap-1.5 min-h-[38px] px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                 isCompanyPageActive || dropdownOpen
                   ? 'text-slate-900 dark:text-slate-100 font-semibold bg-slate-100/80 dark:bg-slate-800/70'
@@ -202,7 +207,7 @@ export const TopBar = memo(function TopBar({
               <span className="inline-grid items-center justify-items-center" aria-hidden="true">
                 {rotatingTabWords.map((word, idx) => (
                   <span
-                    key={word}
+                    key={`${idx}-${word}`}
                     className={`col-start-1 row-start-1 transition-all duration-300 ${
                       idx === tabWordIndex
                         ? 'opacity-100 translate-y-0'
@@ -224,7 +229,7 @@ export const TopBar = memo(function TopBar({
             {dropdownOpen && (
               <div
                 role="menu"
-                aria-label="TestLine pages"
+                aria-label={t.nav.companyMenuAria}
                 className="absolute right-0 mt-2 w-48 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] shadow-lg py-1.5 z-50"
               >
                 {companyMenuItems.map((item) => {
@@ -253,7 +258,37 @@ export const TopBar = memo(function TopBar({
           </div>
         </nav>
 
-        <div className="shrink-0 min-w-[2px]">
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 min-w-[2px]">
+          {lang !== 'en' ? (
+            <button
+              type="button"
+              onClick={() => setManualLang('en')}
+              aria-label="Translate site to English"
+              title="Translate to English"
+              className="inline-flex items-center gap-1.5 min-h-[38px] sm:min-h-[40px] px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+            >
+              <Languages
+                className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0"
+                aria-hidden="true"
+              />
+              <span dir="ltr">English</span>
+            </button>
+          ) : geoLang !== 'en' ? (
+            <button
+              type="button"
+              onClick={() => setManualLang('auto')}
+              aria-label={`Switch back to ${LANG_METADATA[geoLang].englishName}`}
+              title={LANG_METADATA[geoLang].nativeName}
+              className="inline-flex items-center gap-1.5 min-h-[38px] sm:min-h-[40px] px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+            >
+              <Languages
+                className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0"
+                aria-hidden="true"
+              />
+              <span dir={LANG_METADATA[geoLang].dir}>{LANG_METADATA[geoLang].nativeName}</span>
+            </button>
+          ) : null}
+
           {isRunning ? (
             <button
               type="button"
@@ -261,7 +296,7 @@ export const TopBar = memo(function TopBar({
               className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 text-xs sm:text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
             >
               <Square className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
-              <span>Stop Test</span>
+              <span>{t.nav.stopTest}</span>
             </button>
           ) : (
             <PWAInstallButton />
@@ -271,7 +306,7 @@ export const TopBar = memo(function TopBar({
 
       {/* Mobile & Small Tablet Sub-Nav: Speed Test, News, Blog + Company Dropdown */}
       <nav
-        aria-label="Mobile pages"
+        aria-label={t.nav.mobileNavAria}
         className="flex md:hidden items-center justify-between gap-1 px-4 py-1 border-t border-slate-100 dark:border-slate-800/80 text-xs font-medium text-slate-600 dark:text-slate-400"
       >
         <div className="flex items-center gap-1.5">
@@ -292,7 +327,9 @@ export const TopBar = memo(function TopBar({
                   onNavigate(item.id);
                 }}
                 aria-current={active ? 'page' : undefined}
-                aria-label={badgeCount > 0 ? `${item.label} (${badgeCount} new)` : undefined}
+                aria-label={
+                  badgeCount > 0 ? `${item.label} (${badgeCount} ${t.nav.newBadgeSuffix})` : undefined
+                }
                 className={`inline-flex items-center min-h-[38px] px-2.5 py-1.5 rounded-lg whitespace-nowrap shrink-0 transition-colors ${
                   active
                     ? 'text-slate-900 dark:text-slate-100 font-semibold bg-slate-100/80 dark:bg-slate-800/60'
@@ -319,7 +356,7 @@ export const TopBar = memo(function TopBar({
             onClick={() => setDropdownOpen((open) => !open)}
             aria-expanded={dropdownOpen}
             aria-haspopup="menu"
-            aria-label="TestLine menu: About, Contact, and Privacy Policy"
+            aria-label={t.nav.companyMenuAria}
             className={`inline-flex items-center gap-1 min-h-[38px] px-2.5 py-1.5 rounded-lg whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
               isCompanyPageActive || dropdownOpen
                 ? 'text-slate-900 dark:text-slate-100 font-semibold bg-slate-100/80 dark:bg-slate-800/60'
@@ -329,7 +366,7 @@ export const TopBar = memo(function TopBar({
             <span className="inline-grid items-center justify-items-center" aria-hidden="true">
               {rotatingTabWords.map((word, idx) => (
                 <span
-                  key={word}
+                  key={`${idx}-${word}`}
                   className={`col-start-1 row-start-1 transition-all duration-300 ${
                     idx === tabWordIndex
                       ? 'opacity-100 translate-y-0'
@@ -351,7 +388,7 @@ export const TopBar = memo(function TopBar({
           {dropdownOpen && (
             <div
               role="menu"
-              aria-label="Mobile TestLine pages"
+              aria-label={t.nav.mobileNavAria}
               className="absolute right-0 mt-1.5 w-44 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] shadow-lg py-1.5 z-50"
             >
               {companyMenuItems.map((item) => {

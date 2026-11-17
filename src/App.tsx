@@ -11,6 +11,7 @@ import { ProxyVpnCard } from './components/ProxyVpnCard';
 import { PAGE_PATHS, TopBar, type AppPage } from './components/TopBar';
 import { useFeedNotifications } from './hooks/useFeedNotifications';
 import { useInternetStatus } from './hooks/useInternetStatus';
+import { useI18n } from './i18n/LanguageContext';
 import type {
   NetworkDiagnostics,
   SpeedMetrics,
@@ -119,6 +120,7 @@ const INITIAL_NETWORK: NetworkDiagnostics = {
   region: null,
   country: null,
   countryCode: null,
+  continentCode: null,
   timezone: null,
   ptrHostname: null,
   dohReachable: null,
@@ -142,6 +144,7 @@ const INITIAL_NETWORK: NetworkDiagnostics = {
     forwardedHopCount: 0,
     matchedProviderSignal: null,
     signals: [],
+    signalEntries: [],
   },
   loading: false,
   error: null,
@@ -165,6 +168,7 @@ function DeferredPanelSkeleton({ minHeightClass }: { minHeightClass: string }) {
 }
 
 export default function App() {
+  const { t, applyGeoFromDiagnostics } = useI18n();
   const [activePage, setActivePage] = useState<AppPage>(parsePageFromLocation);
   const [theme, setTheme] = useState<ThemeMode>(loadInitialTheme);
   const [unit, setUnit] = useState<SpeedUnit>(loadInitialUnit);
@@ -201,21 +205,23 @@ export default function App() {
   const networkRef = useRef<NetworkDiagnostics>(network);
   const unitRef = useRef<SpeedUnit>(unit);
   const historyRef = useRef<TestRunRecord[]>(history);
+  const tRef = useRef(t);
   const pdfDownloadedForRunRef = useRef(false);
 
   metricsRef.current = metrics;
   networkRef.current = network;
   unitRef.current = unit;
   historyRef.current = history;
+  tRef.current = t;
 
   useEffect(() => {
     latestIpRef.current = network.primaryIp;
   }, [network.primaryIp]);
 
-  // Synchronize per-route On-Page & Technical SEO metadata
+  // Synchronize per-route and localized On-Page & Technical SEO metadata
   useEffect(() => {
-    applyRouteSeo(activePage);
-  }, [activePage]);
+    applyRouteSeo(activePage, t);
+  }, [activePage, t]);
 
   useEffect(() => {
     const syncRoute = () => {
@@ -273,13 +279,19 @@ export default function App() {
     [unit, metrics.downloadMbps, metrics.uploadMbps]
   );
 
-  const loadNetwork = useCallback(async (forceRefresh = false) => {
-    if (forceRefresh || networkRef.current.lastUpdatedAt === null) {
-      setNetwork((prev) => ({ ...prev, loading: true, error: null }));
-    }
-    const info = await fetchNetworkDiagnostics({ forceRefresh });
-    setNetwork(info);
-  }, []);
+  const loadNetwork = useCallback(
+    async (forceRefresh = false) => {
+      if (forceRefresh || networkRef.current.lastUpdatedAt === null) {
+        setNetwork((prev) => ({ ...prev, loading: true, error: null }));
+      }
+      const info = await fetchNetworkDiagnostics({ forceRefresh });
+      setNetwork(info);
+      if (info.countryCode || info.continentCode) {
+        applyGeoFromDiagnostics(info.countryCode, info.continentCode);
+      }
+    },
+    [applyGeoFromDiagnostics]
+  );
 
   const handleManualRefreshNetwork = useCallback(() => {
     void loadNetwork(true);
@@ -395,6 +407,7 @@ export default function App() {
         unit: unitRef.current,
         history: historyRef.current,
         isSecondCopy,
+        t: tRef.current,
       });
       pdfDownloadedForRunRef.current = true;
     } finally {
@@ -457,10 +470,10 @@ export default function App() {
                     style={{ textWrap: 'balance' }}
                     className="font-display text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100"
                   >
-                    Internet Speed Test &amp; Public IP Lookup
+                    {t.hero.title}
                   </h1>
                   <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
-                    Check download &amp; upload speed, ping, and jitter—plus your IPv4/IPv6 address, ISP location, DNS latency, and VPN status.
+                    {t.hero.subtitle}
                   </p>
                 </div>
 
@@ -468,21 +481,21 @@ export default function App() {
                   {/* Unit Toggle */}
                   <div
                     role="group"
-                    aria-label="Speed unit"
+                    aria-label={t.hero.speedUnitAria}
                     className="inline-flex items-center gap-0.5 sm:gap-1 p-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] min-w-0"
                   >
                     <button
                       type="button"
                       onClick={setUnitAuto}
                       aria-pressed={unit === 'Auto'}
-                      title="Automatically uses Mbps below 100 Mbps and MB/s at 100 Mbps or higher"
+                      title={t.hero.autoTooltip}
                       className={`min-h-[40px] sm:min-h-[38px] px-2.5 sm:px-3 py-1.5 text-xs font-mono font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                         unit === 'Auto'
                           ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                       }`}
                     >
-                      {unit === 'Auto' ? `Auto (${resolvedUnit})` : 'Auto'}
+                      {unit === 'Auto' ? `${t.hero.auto} (${resolvedUnit})` : t.hero.auto}
                     </button>
                     <button
                       type="button"
@@ -515,19 +528,19 @@ export default function App() {
                     <button
                       type="button"
                       onClick={toggleTheme}
-                      aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                      title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                      aria-label={theme === 'dark' ? t.hero.switchToLight : t.hero.switchToDark}
+                      title={theme === 'dark' ? t.hero.switchToLight : t.hero.switchToDark}
                       className="inline-flex items-center justify-center gap-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-[40px] p-2 sm:px-3.5 sm:py-2 text-xs font-medium rounded-lg border-0 bg-transparent sm:border sm:border-slate-200 sm:dark:border-slate-800 sm:bg-white sm:dark:bg-[#0F172A] text-slate-700 dark:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
                     >
                       {theme === 'dark' ? (
                         <>
                           <Sun className="w-5 h-5 sm:w-3.5 sm:h-3.5 text-amber-400" aria-hidden="true" />
-                          <span className="hidden sm:inline">Light Mode</span>
+                          <span className="hidden sm:inline">{t.hero.lightMode}</span>
                         </>
                       ) : (
                         <>
                           <Moon className="w-5 h-5 sm:w-3.5 sm:h-3.5 text-slate-700" aria-hidden="true" />
-                          <span className="hidden sm:inline">Dark Mode</span>
+                          <span className="hidden sm:inline">{t.hero.darkMode}</span>
                         </>
                       )}
                     </button>
@@ -536,17 +549,15 @@ export default function App() {
                       type="button"
                       onClick={handleExportPdf}
                       disabled={!isTestInitiated || exportingPdf}
-                      aria-label={exportingPdf ? 'Exporting PDF' : 'Export PDF'}
+                      aria-label={exportingPdf ? t.hero.exportingPdf : t.hero.exportPdf}
                       title={
-                        !isTestInitiated
-                          ? 'Start a speed test first to export a PDF report'
-                          : 'Export speed & network diagnostics PDF report'
+                        !isTestInitiated ? t.hero.exportDisabledTitle : t.hero.exportEnabledTitle
                       }
                       className="inline-flex items-center justify-center gap-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-[40px] p-2 sm:px-3.5 sm:py-2 text-xs font-medium rounded-lg border-0 bg-transparent sm:border sm:border-slate-200 sm:dark:border-slate-800 sm:bg-white sm:dark:bg-[#0F172A] text-slate-700 dark:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:bg-transparent sm:disabled:hover:bg-white sm:dark:disabled:hover:bg-[#0F172A] transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
                     >
                       <FileDown className="w-5 h-5 sm:w-3.5 sm:h-3.5 text-sky-600 dark:text-sky-400" aria-hidden="true" />
                       <span className="hidden sm:inline">
-                        {exportingPdf ? 'Exporting...' : 'Export PDF'}
+                        {exportingPdf ? t.hero.exportingPdf : t.hero.exportPdf}
                       </span>
                     </button>
                   </div>
@@ -671,14 +682,14 @@ export default function App() {
                   id="duplicate-pdf-title"
                   className="font-display text-base font-semibold text-slate-900 dark:text-slate-100"
                 >
-                  Report Already Downloaded
+                  {t.duplicateModal.title}
                 </h2>
               </div>
 
               <button
                 type="button"
                 onClick={handleCancelDuplicatePdf}
-                aria-label="Close dialog"
+                aria-label={t.duplicateModal.closeDialog}
                 className="min-w-[40px] min-h-[40px] -mr-1.5 -mt-1.5 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
               >
                 <X className="w-4 h-4" aria-hidden="true" />
@@ -686,10 +697,14 @@ export default function App() {
             </div>
 
             <p className="mt-4 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-              You have already downloaded the report for this test run. Would you like to download it again?
+              {t.duplicateModal.body}
             </p>
             <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-              Re-exported copies are clearly labeled as <strong className="font-semibold text-slate-700 dark:text-slate-300">Second Copy</strong> on the report.
+              {t.duplicateModal.notePrefix}{' '}
+              <strong className="font-semibold text-slate-700 dark:text-slate-300">
+                {t.duplicateModal.secondCopy}
+              </strong>{' '}
+              {t.duplicateModal.noteSuffix}
             </p>
 
             <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
@@ -698,14 +713,14 @@ export default function App() {
                 onClick={handleCancelDuplicatePdf}
                 className="min-h-[40px] px-4 py-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
               >
-                No, Cancel
+                {t.duplicateModal.cancel}
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDuplicatePdf}
                 className="min-h-[40px] px-4 py-2 text-xs font-semibold rounded-lg bg-sky-600 text-white hover:bg-sky-700 dark:bg-sky-500 dark:text-slate-950 dark:hover:bg-sky-400 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
               >
-                Yes, Download Again
+                {t.duplicateModal.confirm}
               </button>
             </div>
           </div>

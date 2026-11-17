@@ -1,8 +1,10 @@
 import { Download, Share, X } from 'lucide-react';
 import { memo, useEffect, useState } from 'react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
+import { useI18n } from '../i18n/LanguageContext';
 
 export const PWAInstallButton = memo(function PWAInstallButton() {
+  const { t } = useI18n();
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
   const [showIOSGuide, setShowIOSGuide] = useState(false);
 
@@ -26,11 +28,11 @@ export const PWAInstallButton = memo(function PWAInstallButton() {
       <button
         type="button"
         onClick={() => void install()}
-        aria-label="Install TestLine app"
+        aria-label={t.pwa.installAria}
         className="inline-flex items-center gap-1.5 min-h-[40px] px-3 py-2 text-xs sm:text-sm font-medium rounded-lg bg-slate-900 text-white hover:bg-slate-800 dark:bg-sky-500 dark:text-slate-950 dark:hover:bg-sky-400 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
       >
         <Download className="w-3.5 h-3.5" aria-hidden="true" />
-        <span>Install App</span>
+        <span>{t.pwa.installApp}</span>
       </button>
     );
   }
@@ -41,11 +43,11 @@ export const PWAInstallButton = memo(function PWAInstallButton() {
         <button
           type="button"
           onClick={() => setShowIOSGuide(true)}
-          aria-label="Install TestLine on iPhone or iPad"
+          aria-label={t.pwa.installIosAria}
           className="inline-flex items-center gap-1.5 min-h-[40px] px-3 py-2 text-xs font-medium rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
         >
           <Share className="w-3.5 h-3.5" aria-hidden="true" />
-          <span>Install App</span>
+          <span>{t.pwa.installApp}</span>
         </button>
 
         {showIOSGuide && (
@@ -65,12 +67,12 @@ export const PWAInstallButton = memo(function PWAInstallButton() {
                   id="ios-install-title"
                   className="font-display text-base font-semibold text-slate-900 dark:text-slate-100"
                 >
-                  Install TestLine on iPhone / iPad
+                  {t.pwa.iosTitle}
                 </h2>
                 <button
                   type="button"
                   onClick={() => setShowIOSGuide(false)}
-                  aria-label="Close dialog"
+                  aria-label={t.pwa.closeDialog}
                   className="min-w-[40px] min-h-[40px] -mr-1.5 -mt-1.5 inline-flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 >
                   <X className="w-4 h-4" aria-hidden="true" />
@@ -79,14 +81,16 @@ export const PWAInstallButton = memo(function PWAInstallButton() {
 
               <ol className="mt-3.5 space-y-2 text-sm text-slate-600 dark:text-slate-300 list-decimal list-inside leading-relaxed">
                 <li>
-                  Tap the <strong className="text-slate-900 dark:text-slate-100">Share</strong> button in Safari&apos;s toolbar.
+                  {t.pwa.iosStep1Prefix}{' '}
+                  <strong className="text-slate-900 dark:text-slate-100">{t.pwa.iosStep1Strong}</strong>{' '}
+                  {t.pwa.iosStep1Suffix}
                 </li>
                 <li>
-                  Scroll down and tap <strong className="text-slate-900 dark:text-slate-100">Add to Home Screen</strong>.
+                  {t.pwa.iosStep2Prefix}{' '}
+                  <strong className="text-slate-900 dark:text-slate-100">{t.pwa.iosStep2Strong}</strong>
+                  {t.pwa.iosStep2Suffix}
                 </li>
-                <li>
-                  Open TestLine anytime—even offline, the Signal Runner game launches automatically.
-                </li>
+                <li>{t.pwa.iosStep3}</li>
               </ol>
 
               <button
@@ -94,7 +98,7 @@ export const PWAInstallButton = memo(function PWAInstallButton() {
                 onClick={() => setShowIOSGuide(false)}
                 className="mt-5 w-full min-h-[44px] py-2.5 px-4 text-xs font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-800 dark:bg-sky-500 dark:text-slate-950 dark:hover:bg-sky-400 transition-colors cursor-pointer"
               >
-                Got It
+                {t.pwa.gotIt}
               </button>
             </div>
           </div>

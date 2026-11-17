@@ -1,5 +1,6 @@
 import { ShieldCheck } from 'lucide-react';
 import { memo, useEffect, useState } from 'react';
+import { useI18n } from '../i18n/LanguageContext';
 import {
   CONSENT_CHANGE_EVENT,
   initConsentState,
@@ -16,6 +17,7 @@ export const ConsentBanner = memo(function ConsentBanner({
   onOpenPreferences,
   suppressed = false,
 }: ConsentBannerProps) {
+  const { t } = useI18n();
   const [choice, setChoice] = useState<ConsentChoice | null>(() => initConsentState());
 
   useEffect(() => {
@@ -49,13 +51,12 @@ export const ConsentBanner = memo(function ConsentBanner({
             id="consent-popup-title"
             className="font-display text-base font-semibold text-slate-900 dark:text-slate-100"
           >
-            Cookie &amp; Privacy Notice
+            {t.consent.title}
           </h2>
         </div>
 
         <p className="mt-3.5 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-          TestLine uses essential local storage for theme, units, and history. Optional analytics
-          and ad cookies stay off unless you accept.
+          {t.consent.description}
         </p>
 
         <div className="mt-5 flex flex-col gap-2.5 w-full">
@@ -64,21 +65,21 @@ export const ConsentBanner = memo(function ConsentBanner({
             onClick={() => setConsentPreference('all')}
             className="w-full min-h-[44px] px-4 py-2.5 text-xs font-semibold rounded-lg bg-black text-white border border-black hover:bg-zinc-900 dark:border-slate-600 dark:hover:bg-zinc-900 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
           >
-            Accept All
+            {t.consent.acceptAll}
           </button>
           <button
             type="button"
             onClick={() => setConsentPreference('essential')}
             className="w-full min-h-[44px] px-4 py-2.5 text-xs font-medium rounded-lg bg-black text-white border border-black hover:bg-zinc-900 dark:border-slate-700 dark:hover:bg-zinc-900 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
           >
-            Essential Only
+            {t.consent.essentialOnly}
           </button>
           <button
             type="button"
             onClick={onOpenPreferences}
             className="w-full min-h-[44px] px-4 py-2.5 text-xs font-medium rounded-lg bg-black text-white border border-black hover:bg-zinc-900 dark:border-slate-700 dark:hover:bg-zinc-900 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
           >
-            Cookie Settings
+            {t.consent.cookieSettings}
           </button>
         </div>
       </div>

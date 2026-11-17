@@ -7,6 +7,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express, { type Request, type Response } from 'express';
+import {
+  isAsianCountryOrContinent,
+  resolveLangFromGeo,
+} from './src/i18n/localeDetection';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -528,10 +532,13 @@ interface IpMetadata {
   region: string | null;
   country: string | null;
   countryCode: string | null;
+  continentCode: string | null;
   timezone: string | null;
   proxyFlag: boolean;
   hostingFlag: boolean;
 }
+
+const IP_METADATA_CACHE = new Map<string, { expiresAt: number; meta: IpMetadata }>();
 
 async function enrichIpMetadata(ip: string): Promise<IpMetadata> {
   const empty: IpMetadata = {
@@ -542,6 +549,7 @@ async function enrichIpMetadata(ip: string): Promise<IpMetadata> {
     region: null,
     country: null,
     countryCode: null,
+    continentCode: null,
     timezone: null,
     proxyFlag: false,
     hostingFlag: false,
@@ -549,12 +557,17 @@ async function enrichIpMetadata(ip: string): Promise<IpMetadata> {
 
   if (!ip || isPrivateOrLoopbackIp(ip)) return empty;
 
+  const cached = IP_METADATA_CACHE.get(ip);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.meta;
+  }
+
   const [ipWhoResult, ipApiResult] = await Promise.allSettled([
     fetchWithTimeout(`https://ipwho.is/${encodeURIComponent(ip)}`, 2800).then((r) =>
       r.ok ? r.json() : null
     ),
     fetchWithTimeout(
-      `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,country,countryCode,regionName,city,isp,org,as,timezone,proxy,hosting`,
+      `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,continentCode,country,countryCode,regionName,city,isp,org,as,timezone,proxy,hosting`,
       2800
     ).then((r) => (r.ok ? r.json() : null)),
   ]);
@@ -567,6 +580,7 @@ async function enrichIpMetadata(ip: string): Promise<IpMetadata> {
           region?: string;
           country?: string;
           country_code?: string;
+          continent_code?: string;
           connection?: { asn?: number; org?: string; isp?: string };
           timezone?: { id?: string };
         } | null)
@@ -576,6 +590,7 @@ async function enrichIpMetadata(ip: string): Promise<IpMetadata> {
     ipApiResult.status === 'fulfilled'
       ? (ipApiResult.value as {
           status?: string;
+          continentCode?: string;
           country?: string;
           countryCode?: string;
           regionName?: string;
@@ -594,7 +609,7 @@ async function enrichIpMetadata(ip: string): Promise<IpMetadata> {
 
   const asnMatch = apiOk && ipApi?.as ? ipApi.as.match(/^(AS\d+)/i) : null;
 
-  return {
+  const meta: IpMetadata = {
     isp:
       (whoOk ? ipWho?.connection?.isp || ipWho?.connection?.org : null) ||
       (apiOk ? ipApi?.isp || ipApi?.org : null) ||
@@ -609,10 +624,22 @@ async function enrichIpMetadata(ip: string): Promise<IpMetadata> {
     country: (whoOk ? ipWho?.country : null) || (apiOk ? ipApi?.country : null) || null,
     countryCode:
       (whoOk ? ipWho?.country_code : null) || (apiOk ? ipApi?.countryCode : null) || null,
+    continentCode:
+      (whoOk ? ipWho?.continent_code : null) || (apiOk ? ipApi?.continentCode : null) || null,
     timezone: (whoOk ? ipWho?.timezone?.id : null) || (apiOk ? ipApi?.timezone : null) || null,
     proxyFlag: apiOk ? Boolean(ipApi?.proxy) : false,
     hostingFlag: apiOk ? Boolean(ipApi?.hosting) : false,
   };
+
+  if (meta.countryCode) {
+    if (IP_METADATA_CACHE.size >= 500) {
+      const oldest = IP_METADATA_CACHE.keys().next().value;
+      if (oldest) IP_METADATA_CACHE.delete(oldest);
+    }
+    IP_METADATA_CACHE.set(ip, { expiresAt: Date.now() + 30 * 60 * 1000, meta });
+  }
+
+  return meta;
 }
 
 function findProviderKeywordMatch(fields: Array<string | null>): string | null {
@@ -1449,8 +1476,10 @@ async function startServer() {
         robotsTxt: `${origin}/robots.txt`,
       },
       endpoints: {
+        geoLocale: { method: 'GET', url: `${origin}/api/geo-locale` },
         networkInfo: { method: 'GET', url: `${origin}/api/network-info` },
         newsFeed: { method: 'GET', url: `${origin}/api/news` },
+        dailyBlogs: { method: 'GET', url: `${origin}/api/daily-blogs` },
         speedPing: { method: 'GET', url: `${origin}/api/speed/ping` },
         speedDownload: { method: 'GET', url: `${origin}/api/speed/download` },
         speedUpload: { method: 'POST', url: `${origin}/api/speed/upload` },
@@ -1568,6 +1597,84 @@ async function startServer() {
     });
   });
 
+  app.get('/api/geo-locale', async (req: Request, res: Response) => {
+    res.set({
+      'Cache-Control': 'no-store, no-cache',
+    });
+
+    const headerCountry = [
+      req.headers['cf-ipcountry'],
+      req.headers['x-appengine-country'],
+      req.headers['x-vercel-ip-country'],
+      req.headers['x-country-code'],
+      req.headers['x-geo-country'],
+    ]
+      .find((h) => typeof h === 'string' && /^[a-z]{2}$/i.test(h.trim()) && h.trim().toUpperCase() !== 'XX' && h.trim().toUpperCase() !== 'T1')
+      ?.toString()
+      .trim()
+      .toUpperCase() ?? null;
+
+    const acceptLangHeader =
+      typeof req.headers['accept-language'] === 'string' ? req.headers['accept-language'] : null;
+
+    if (headerCountry) {
+      const isAsia = isAsianCountryOrContinent(headerCountry, null);
+      const lang = resolveLangFromGeo(headerCountry, null, acceptLangHeader);
+      res.status(200).json({
+        countryCode: headerCountry,
+        continentCode: isAsia ? 'AS' : null,
+        isAsia,
+        lang,
+        source: 'edge-header',
+      });
+      return;
+    }
+
+    const extracted = extractClientIpInfo(req);
+    let observedIp = extracted.ip;
+    let source = 'client-ip';
+
+    if (!observedIp || isPrivateOrLoopbackIp(observedIp)) {
+      source = 'outbound-fallback';
+      try {
+        const ipRes = await fetchWithTimeout('https://api64.ipify.org?format=json', 2200);
+        if (ipRes.ok) {
+          const parsed = (await ipRes.json()) as { ip?: string };
+          if (parsed.ip && !isPrivateOrLoopbackIp(parsed.ip)) {
+            observedIp = parsed.ip;
+          }
+        }
+      } catch {
+        // Ignore IP fallback failures
+      }
+    }
+
+    if (observedIp && !isPrivateOrLoopbackIp(observedIp)) {
+      const meta = await enrichIpMetadata(observedIp);
+      if (meta.countryCode || meta.continentCode) {
+        const isAsia = isAsianCountryOrContinent(meta.countryCode, meta.continentCode);
+        const lang = resolveLangFromGeo(meta.countryCode, meta.continentCode, acceptLangHeader);
+        res.status(200).json({
+          countryCode: meta.countryCode,
+          continentCode: meta.continentCode,
+          country: meta.country,
+          isAsia,
+          lang,
+          source,
+        });
+        return;
+      }
+    }
+
+    res.status(200).json({
+      countryCode: null,
+      continentCode: null,
+      isAsia: false,
+      lang: null,
+      source: 'unresolved',
+    });
+  });
+
   app.get('/api/network-info', async (req: Request, res: Response) => {
     res.set({
       'Cache-Control': 'no-store, no-cache',
@@ -1627,6 +1734,7 @@ async function startServer() {
       region: geo.region,
       country: geo.country,
       countryCode: geo.countryCode,
+      continentCode: geo.continentCode,
       timezone: geo.timezone,
       protocol: req.headers['x-forwarded-proto'] || req.protocol || 'http',
       httpVersion: req.httpVersion,
@@ -1731,7 +1839,7 @@ async function startServer() {
 
   httpServer.listen(PORT, HOST, () => {
     console.log(`TestLine server listening on http://${HOST}:${PORT}`);
-    // Pre-generate today's 2 hot-news blog articles on startup and refresh every 6 hours
+    // Pre-generate today's 2 hot-news blog articles on startup
     void ensureDailyHotNewsBlogs(false).catch(() => {});
     const dailyTimer = setInterval(() => {
       void ensureDailyHotNewsBlogs(false).catch(() => {});

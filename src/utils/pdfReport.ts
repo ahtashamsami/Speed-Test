@@ -1,6 +1,9 @@
 import { jsPDF } from 'jspdf';
+import { enPack } from '../i18n/packs/en';
+import type { TranslationPack } from '../i18n/types';
 import type {
   NetworkDiagnostics,
+  ProxySignalEntry,
   SpeedMetrics,
   SpeedUnit,
   TestRunRecord,
@@ -18,9 +21,18 @@ interface PdfReportInput {
   unit: SpeedUnit;
   history: TestRunRecord[];
   isSecondCopy?: boolean;
+  t?: TranslationPack;
 }
 
 const BRAND_LOGO_PATH = '/assets/aistudio/test_logo_light.png';
+
+function formatProxySignalLine(entry: ProxySignalEntry, t: TranslationPack): string {
+  const template = t.proxy.signalTemplates[entry.code];
+  if (!template) return entry.code;
+  return template
+    .replace('{1}', entry.arg1 ?? '')
+    .replace('{2}', entry.arg2 ?? '');
+}
 
 async function loadTrimmedLogoDataUrl(
   src: string,
@@ -126,12 +138,13 @@ export async function exportNetworkReportPdf({
   unit,
   history,
   isSecondCopy = false,
+  t = enPack,
 }: PdfReportInput): Promise<void> {
   const resolvedUnit = resolveSpeedUnit(
     unit,
     metrics.downloadMbps ?? metrics.uploadMbps
   );
-  const unitLabel = unit === 'Auto' ? `Auto (${resolvedUnit})` : unit;
+  const autoWord = unit === 'Auto' ? `${t.hero.auto} (${resolvedUnit})` : unit;
   const logoAsset = await loadTrimmedLogoDataUrl(BRAND_LOGO_PATH, true);
 
   const doc = new jsPDF({
@@ -177,24 +190,30 @@ export async function exportNetworkReportPdf({
     headerBottomY = logoY + logoH + 2.5;
   }
 
+  const pText = t.pdf;
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(17);
   doc.setTextColor(15, 23, 42);
-  doc.text('TestLine Network & Speed Report', marginX, cursorY + 2);
+  doc.text(pText.reportTitle, marginX, cursorY + 2);
   cursorY += 7.5;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
   doc.setTextColor(100, 116, 139);
-  const generatedStr = new Date().toLocaleString();
-  doc.text(`Generated: ${generatedStr}  ·  Unit: ${unitLabel}  ·  ECORZO LLC`, marginX, cursorY);
+  const generatedStr = new Date().toLocaleString(t.meta.intlLocale);
+  doc.text(
+    `${pText.generated}: ${generatedStr}  ·  ${pText.unit}: ${autoWord}  ·  ECORZO LLC`,
+    marginX,
+    cursorY
+  );
   cursorY += 5.5;
 
   if (isSecondCopy) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(180, 83, 9);
-    doc.text('SECOND COPY  —  Duplicate Report Download', marginX, cursorY);
+    doc.text(pText.secondCopyBanner, marginX, cursorY);
     cursorY += 5;
   }
 
@@ -208,38 +227,38 @@ export async function exportNetworkReportPdf({
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.setTextColor(15, 23, 42);
-  doc.text('1. Speed Benchmark Summary', marginX, cursorY);
+  doc.text(pText.sec1Title, marginX, cursorY);
   cursorY += 6;
 
   const speedCards = [
     {
-      label: 'Download Speed',
+      label: pText.downloadSpeed,
       value: `${formatThroughput(metrics.downloadMbps, resolvedUnit)} ${resolvedUnit}`,
       sub:
         metrics.peakDownloadMbps !== null
-          ? `Peak ${formatThroughput(metrics.peakDownloadMbps, resolvedUnit)} ${resolvedUnit}`
-          : 'Sustained stream',
+          ? `${pText.peak} ${formatThroughput(metrics.peakDownloadMbps, resolvedUnit)} ${resolvedUnit}`
+          : pText.sustained,
     },
     {
-      label: 'Upload Speed',
+      label: pText.uploadSpeed,
       value: `${formatThroughput(metrics.uploadMbps, resolvedUnit)} ${resolvedUnit}`,
       sub:
         metrics.peakUploadMbps !== null
-          ? `Peak ${formatThroughput(metrics.peakUploadMbps, resolvedUnit)} ${resolvedUnit}`
-          : 'Sustained stream',
+          ? `${pText.peak} ${formatThroughput(metrics.peakUploadMbps, resolvedUnit)} ${resolvedUnit}`
+          : pText.sustained,
     },
     {
-      label: 'Average Ping',
+      label: pText.avgPing,
       value: `${formatLatency(metrics.pingMs)} ms`,
       sub:
         metrics.minPingMs !== null
-          ? `Min ${formatLatency(metrics.minPingMs)} ms`
-          : 'RTT probes',
+          ? `${pText.min} ${formatLatency(metrics.minPingMs)} ms`
+          : pText.rttProbes,
     },
     {
-      label: 'Jitter',
+      label: pText.jitter,
       value: `${formatLatency(metrics.jitterMs)} ms`,
-      sub: `${metrics.pingSamples.length} probes`,
+      sub: `${metrics.pingSamples.length} ${pText.probes}`,
     },
   ];
 
@@ -276,30 +295,37 @@ export async function exportNetworkReportPdf({
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.setTextColor(15, 23, 42);
-  doc.text('2. Proxy & VPN Detection', marginX, cursorY);
+  doc.text(pText.sec2Title, marginX, cursorY);
   cursorY += 5.5;
 
   const { proxyDetection } = network;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   if (proxyDetection.detected) {
+    const catLabel = t.proxy.categories[proxyDetection.category] ?? proxyDetection.category;
+    const confLabel = t.proxy.confidence[proxyDetection.confidence] ?? proxyDetection.confidence;
     doc.setTextColor(180, 83, 9);
     doc.text(
-      `${proxyDetection.category} (${proxyDetection.confidence} confidence)`,
+      `${catLabel} (${confLabel} ${pText.confidenceWord})`,
       marginX,
       cursorY
     );
   } else {
     doc.setTextColor(15, 118, 110);
-    doc.text('Direct Connection — No proxy or VPN signals detected', marginX, cursorY);
+    doc.text(pText.directClean, marginX, cursorY);
   }
   cursorY += 5.5;
 
-  if (proxyDetection.signals.length > 0) {
+  const localizedSignals =
+    proxyDetection.signalEntries && proxyDetection.signalEntries.length > 0
+      ? proxyDetection.signalEntries.map((entry) => formatProxySignalLine(entry, t))
+      : proxyDetection.signals;
+
+  if (localizedSignals.length > 0) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(51, 65, 85);
-    for (const signal of proxyDetection.signals) {
+    for (const signal of localizedSignals) {
       const wrapped = doc.splitTextToSize(`• ${signal}`, contentWidth - 4);
       ensureSpace(wrapped.length * 4.5 + 2);
       doc.text(wrapped, marginX + 2, cursorY);
@@ -313,33 +339,33 @@ export async function exportNetworkReportPdf({
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.setTextColor(15, 23, 42);
-  doc.text('3. Network, IP & DNS Diagnostics', marginX, cursorY);
+  doc.text(pText.sec3Title, marginX, cursorY);
   cursorY += 6;
 
   const locationStr =
     [network.city, network.region, network.country].filter(Boolean).join(', ') ||
-    'Unavailable';
+    t.diagnostics.unavailable;
 
   const rows: Array<[string, string]> = [
-    ['Primary Public IP', network.primaryIp ?? 'Unavailable'],
-    ['IPv4 Address', network.ipv4 ?? 'Not detected'],
-    ['IPv6 Address', network.ipv6 ?? 'Not detected'],
-    ['ISP / Carrier', network.isp ?? 'Unavailable'],
+    [pText.rowPrimaryIp, network.primaryIp ?? t.diagnostics.unavailable],
+    [pText.rowIpv4, network.ipv4 ?? pText.notDetected],
+    [pText.rowIpv6, network.ipv6 ?? pText.notDetected],
+    [pText.rowIsp, network.isp ?? t.diagnostics.unavailable],
     [
-      'Autonomous System (ASN)',
-      [network.asn, network.org].filter(Boolean).join(' · ') || 'Unavailable',
+      pText.rowAsn,
+      [network.asn, network.org].filter(Boolean).join(' · ') || t.diagnostics.unavailable,
     ],
-    ['Approximate Location', locationStr],
-    ['Timezone', network.timezone ?? 'Unavailable'],
-    ['Reverse DNS (PTR)', network.ptrHostname ?? 'No PTR record published'],
+    [pText.rowLocation, locationStr],
+    [pText.rowTimezone, network.timezone ?? t.diagnostics.unavailable],
+    [pText.rowPtr, network.ptrHostname ?? pText.noPtr],
     [
-      'DoH Resolver Probe',
+      pText.rowDoh,
       network.dohReachable
-        ? `${network.dohResolver} · Reachable (${network.dohLatencyMs?.toFixed(1) ?? '—'} ms)`
-        : `${network.dohResolver} · Unreachable`,
+        ? `${network.dohResolver} · ${pText.reachable} (${network.dohLatencyMs?.toFixed(1) ?? '—'} ms)`
+        : `${network.dohResolver} · ${pText.unreachable}`,
     ],
     [
-      'Transport Protocol',
+      pText.rowProtocol,
       [
         network.protocol?.toUpperCase(),
         network.httpVersion ? `HTTP/${network.httpVersion}` : null,
@@ -348,20 +374,20 @@ export async function exportNetworkReportPdf({
         .join(' · ') || 'HTTPS',
     ],
     [
-      'Browser Link Hint',
+      pText.rowLinkHint,
       network.connectionHint
         ? [
             network.connectionHint.effectiveType?.toUpperCase(),
             network.connectionHint.downlinkMbps !== undefined
-              ? `~${network.connectionHint.downlinkMbps} Mbps cap`
+              ? `~${network.connectionHint.downlinkMbps} ${t.diagnostics.capSuffix}`
               : null,
             network.connectionHint.rttMs !== undefined
-              ? `${network.connectionHint.rttMs} ms RTT`
+              ? `${network.connectionHint.rttMs} ${t.diagnostics.rttSuffix}`
               : null,
           ]
             .filter(Boolean)
-            .join(' · ') || 'Available'
-        : 'Not exposed by browser',
+            .join(' · ') || pText.available
+        : pText.notExposed,
     ],
   ];
 
@@ -392,18 +418,18 @@ export async function exportNetworkReportPdf({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.setTextColor(15, 23, 42);
-    doc.text('4. Recent Session Runs', marginX, cursorY);
+    doc.text(pText.sec4Title, marginX, cursorY);
     cursorY += 6;
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(71, 85, 105);
-    doc.text('Time', marginX, cursorY);
-    doc.text(`Download (${unit})`, marginX + 34, cursorY);
-    doc.text(`Upload (${unit})`, marginX + 68, cursorY);
-    doc.text('Ping (ms)', marginX + 100, cursorY);
-    doc.text('Jitter (ms)', marginX + 125, cursorY);
-    doc.text('Public IP', marginX + 150, cursorY);
+    doc.text(pText.colTime, marginX, cursorY);
+    doc.text(`${pText.colDownload} (${unit === 'Auto' ? t.hero.auto : unit})`, marginX + 34, cursorY);
+    doc.text(`${pText.colUpload} (${unit === 'Auto' ? t.hero.auto : unit})`, marginX + 68, cursorY);
+    doc.text(pText.colPing, marginX + 100, cursorY);
+    doc.text(pText.colJitter, marginX + 125, cursorY);
+    doc.text(pText.colIp, marginX + 150, cursorY);
     cursorY += 2.5;
 
     doc.setDrawColor(203, 213, 225);
@@ -431,7 +457,7 @@ export async function exportNetworkReportPdf({
           ? `${formatThroughput(rec.uploadMbps, ulUnit)} ${ulUnit}`
           : formatThroughput(rec.uploadMbps, ulUnit);
 
-      doc.text(formatTimeShort(rec.timestamp), marginX, cursorY);
+      doc.text(formatTimeShort(rec.timestamp, t.meta.intlLocale), marginX, cursorY);
       doc.text(dlText, marginX + 34, cursorY);
       doc.text(ulText, marginX + 68, cursorY);
       doc.text(formatLatency(rec.pingMs), marginX + 100, cursorY);
@@ -449,8 +475,11 @@ export async function exportNetworkReportPdf({
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
+    const pageLabel = pText.pageOf
+      .replace('{p}', String(p))
+      .replace('{total}', String(pageCount));
     doc.text(
-      `TestLine by ECORZO LLC  ·  ${isSecondCopy ? 'Second Copy  ·  ' : ''}Page ${p} of ${pageCount}`,
+      `TestLine · ECORZO LLC  ·  ${isSecondCopy ? `${pText.secondCopyShort}  ·  ` : ''}${pageLabel}`,
       marginX,
       pageHeight - 10
     );

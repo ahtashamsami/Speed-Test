@@ -1,5 +1,6 @@
 import { Activity, AlertTriangle, CheckCircle2, Square } from 'lucide-react';
 import { memo, useMemo } from 'react';
+import { useI18n } from '../i18n/LanguageContext';
 import type { ResolvedSpeedUnit, SpeedMetrics, SpeedUnit } from '../types/network';
 import { formatLatency, formatThroughput } from '../utils/formatters';
 
@@ -18,6 +19,7 @@ export const FastSpeedStage = memo(function FastSpeedStage({
   onStartTest,
   onStopTest,
 }: FastSpeedStageProps) {
+  const { t } = useI18n();
   const isRunning =
     metrics.phase === 'ping' || metrics.phase === 'download' || metrics.phase === 'upload';
 
@@ -37,9 +39,9 @@ export const FastSpeedStage = memo(function FastSpeedStage({
   const peakUploadFormatted = useMemo(
     () =>
       metrics.peakUploadMbps !== null
-        ? `Peak ${formatThroughput(metrics.peakUploadMbps, resolvedUnit)} ${resolvedUnit}`
-        : '2 parallel streams',
-    [metrics.peakUploadMbps, resolvedUnit]
+        ? `${t.speedStage.peakPrefix} ${formatThroughput(metrics.peakUploadMbps, resolvedUnit)} ${resolvedUnit}`
+        : t.speedStage.twoStreams,
+    [metrics.peakUploadMbps, resolvedUnit, t.speedStage.peakPrefix, t.speedStage.twoStreams]
   );
 
   const pingFormatted = useMemo(() => formatLatency(metrics.pingMs), [metrics.pingMs]);
@@ -47,9 +49,9 @@ export const FastSpeedStage = memo(function FastSpeedStage({
   const pingSubLabel = useMemo(
     () =>
       metrics.minPingMs !== null
-        ? `Min ${formatLatency(metrics.minPingMs)} ms · ${metrics.pingSamples.length} probes`
-        : '5 Cloudflare RTT probes',
-    [metrics.minPingMs, metrics.pingSamples.length]
+        ? `${t.speedStage.minPrefix} ${formatLatency(metrics.minPingMs)} ms · ${metrics.pingSamples.length} ${t.speedStage.probesSuffix}`
+        : t.speedStage.fiveProbes,
+    [metrics.minPingMs, metrics.pingSamples.length, t.speedStage.minPrefix, t.speedStage.probesSuffix, t.speedStage.fiveProbes]
   );
 
   const jitterFormatted = useMemo(() => formatLatency(metrics.jitterMs), [metrics.jitterMs]);
@@ -61,21 +63,21 @@ export const FastSpeedStage = memo(function FastSpeedStage({
   const statusText = useMemo(() => {
     switch (metrics.phase) {
       case 'ping':
-        return 'Measuring ping & jitter...';
+        return t.speedStage.statusPing;
       case 'download':
-        return 'Testing download speed...';
+        return t.speedStage.statusDownload;
       case 'upload':
-        return 'Testing upload speed...';
+        return t.speedStage.statusUpload;
       case 'complete':
-        return 'Speed test complete';
+        return t.speedStage.statusComplete;
       case 'stopped':
-        return 'Test stopped';
+        return t.speedStage.statusStopped;
       case 'error':
-        return 'Test interrupted';
+        return t.speedStage.statusError;
       default:
-        return 'Click Play to start speed test';
+        return t.speedStage.statusIdle;
     }
-  }, [metrics.phase]);
+  }, [metrics.phase, t.speedStage]);
 
   const isIdle = metrics.phase === 'idle';
 
@@ -87,7 +89,7 @@ export const FastSpeedStage = memo(function FastSpeedStage({
             <button
               type="button"
               onClick={onStartTest}
-              aria-label="Start speed test"
+              aria-label={t.speedStage.startAria}
               className="group relative inline-flex flex-col items-center gap-4 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-4 dark:focus-visible:ring-offset-[#0F172A] rounded-2xl p-3 [--play-depth-a:#18181B] [--play-depth-b:#000000] [--play-depth-mid:#09090B] [--play-face-a:#3F3F46] [--play-face-b:#18181B] [--play-face-c:#000000] [--play-rim-a:#71717A] [--play-rim-b:#000000] dark:[--play-depth-a:#0369A1] dark:[--play-depth-b:#082F49] dark:[--play-depth-mid:#075985] dark:[--play-face-a:#7DD3FC] dark:[--play-face-b:#0EA5E9] dark:[--play-face-c:#0284C7] dark:[--play-rim-a:#E0F2FE] dark:[--play-rim-b:#0369A1]"
             >
               <svg
@@ -145,20 +147,20 @@ export const FastSpeedStage = memo(function FastSpeedStage({
               </svg>
 
               <span className="font-display text-base sm:text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100 group-hover:text-black dark:group-hover:text-sky-300 transition-colors">
-                Start Speed Test
+                {t.speedStage.startSpeedTest}
               </span>
             </button>
           </div>
         ) : (
           <>
             <p className="text-sm sm:text-base font-medium text-slate-500 dark:text-slate-400">
-              Your Internet speed is
+              {t.speedStage.yourSpeedIs}
             </p>
 
             {/* Fast.com-style Giant Centered Hero Readout */}
-            <div className="mt-4 flex items-center justify-center gap-3 sm:gap-6">
+            <div dir="ltr" className="mt-4 flex items-center justify-center gap-3 sm:gap-6">
               <span
-                className={`font-mono text-5xl sm:text-8xl lg:text-[6.75rem] font-bold leading-none tracking-tight transition-colors ${
+                className={`font-mono tabular-nums text-5xl sm:text-8xl lg:text-[6.75rem] font-bold leading-none tracking-tight transition-colors ${
                   isHeroMuted
                     ? 'text-slate-300 dark:text-slate-700'
                     : metrics.phase === 'download'
@@ -176,7 +178,7 @@ export const FastSpeedStage = memo(function FastSpeedStage({
                   </span>
                   {unit === 'Auto' && (
                     <span className="text-xs font-mono font-medium text-slate-400 dark:text-slate-500">
-                      Auto
+                      {t.speedStage.autoTag}
                     </span>
                   )}
                 </div>
@@ -185,8 +187,8 @@ export const FastSpeedStage = memo(function FastSpeedStage({
                   <button
                     type="button"
                     onClick={onStopTest}
-                    aria-label="Stop speed test"
-                    title="Stop speed test"
+                    aria-label={t.speedStage.stopAria}
+                    title={t.speedStage.stopAria}
                     className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-full border-2 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-900 dark:hover:border-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
                   >
                     <Square className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
@@ -195,8 +197,8 @@ export const FastSpeedStage = memo(function FastSpeedStage({
                   <button
                     type="button"
                     onClick={onStartTest}
-                    aria-label="Start speed test"
-                    title="Start speed test"
+                    aria-label={t.speedStage.startAria}
+                    title={t.speedStage.startAria}
                     className="group min-w-[44px] min-h-[44px] w-11 h-11 inline-flex items-center justify-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 rounded-lg [--play-mini-depth-a:#18181B] [--play-mini-depth-b:#000000] [--play-mini-face-a:#3F3F46] [--play-mini-face-b:#18181B] [--play-mini-face-c:#000000] [--play-mini-rim:#71717A] dark:[--play-mini-depth-a:#0369A1] dark:[--play-mini-depth-b:#082F49] dark:[--play-mini-face-a:#7DD3FC] dark:[--play-mini-face-b:#0EA5E9] dark:[--play-mini-face-c:#0284C7] dark:[--play-mini-rim:#E0F2FE]"
                   >
                     <svg
@@ -280,7 +282,7 @@ export const FastSpeedStage = memo(function FastSpeedStage({
                     onClick={onStartTest}
                     className="min-h-[38px] px-3.5 py-1.5 font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-sky-700 dark:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
                   >
-                    Retry
+                    {t.speedStage.retry}
                   </button>
                 </div>
               )}
@@ -290,11 +292,11 @@ export const FastSpeedStage = memo(function FastSpeedStage({
             <div className="mt-9 pt-7 border-t border-slate-100 dark:border-slate-800/90 grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-slate-800 text-left sm:text-center">
               <div className="py-3 sm:py-0 sm:px-6">
                 <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Upload Speed
+                  {t.speedStage.uploadSpeed}
                 </div>
-                <div className="mt-1.5 flex items-baseline sm:justify-center gap-1.5">
+                <div dir="ltr" className="mt-1.5 flex items-baseline sm:justify-center gap-1.5">
                   <span
-                    className={`font-mono text-2xl sm:text-3xl font-semibold ${
+                    className={`font-mono tabular-nums text-2xl sm:text-3xl font-semibold ${
                       metrics.uploadMbps === null
                         ? 'text-slate-300 dark:text-slate-700'
                         : metrics.phase === 'upload'
@@ -315,11 +317,11 @@ export const FastSpeedStage = memo(function FastSpeedStage({
 
               <div className="py-3 sm:py-0 sm:px-6">
                 <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Latency (Average Ping)
+                  {t.speedStage.latencyAvgPing}
                 </div>
-                <div className="mt-1.5 flex items-baseline sm:justify-center gap-1.5">
+                <div dir="ltr" className="mt-1.5 flex items-baseline sm:justify-center gap-1.5">
                   <span
-                    className={`font-mono text-2xl sm:text-3xl font-semibold ${
+                    className={`font-mono tabular-nums text-2xl sm:text-3xl font-semibold ${
                       metrics.pingMs === null
                         ? 'text-slate-300 dark:text-slate-700'
                         : 'text-slate-900 dark:text-slate-100'
@@ -338,11 +340,11 @@ export const FastSpeedStage = memo(function FastSpeedStage({
 
               <div className="py-3 sm:py-0 sm:px-6">
                 <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Jitter
+                  {t.speedStage.jitter}
                 </div>
-                <div className="mt-1.5 flex items-baseline sm:justify-center gap-1.5">
+                <div dir="ltr" className="mt-1.5 flex items-baseline sm:justify-center gap-1.5">
                   <span
-                    className={`font-mono text-2xl sm:text-3xl font-semibold ${
+                    className={`font-mono tabular-nums text-2xl sm:text-3xl font-semibold ${
                       metrics.jitterMs === null
                         ? 'text-slate-300 dark:text-slate-700'
                         : 'text-slate-900 dark:text-slate-100'
@@ -356,8 +358,8 @@ export const FastSpeedStage = memo(function FastSpeedStage({
                 </div>
                 <p className="mt-1 font-mono text-xs text-slate-500 dark:text-slate-400">
                   {metrics.pingSamples.length > 1
-                    ? 'Consecutive RTT variance'
-                    : 'Waiting for RTT samples'}
+                    ? t.speedStage.consecutiveVariance
+                    : t.speedStage.waitingRtt}
                 </p>
               </div>
             </div>

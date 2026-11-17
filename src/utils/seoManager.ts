@@ -1,4 +1,6 @@
 import { PAGE_PATHS, type AppPage } from '../components/TopBar';
+import { enPack } from '../i18n/packs/en';
+import type { TranslationPack } from '../i18n/types';
 
 interface RouteSeoMeta {
   title: string;
@@ -126,18 +128,20 @@ function upsertLinkTag(rel: string, href: string): void {
 
 const CANONICAL_ORIGIN = 'https://testline.net';
 
-export function applyRouteSeo(page: AppPage): void {
+export function applyRouteSeo(page: AppPage, t: TranslationPack = enPack): void {
   if (typeof document === 'undefined' || typeof window === 'undefined') return;
 
-  const meta = ROUTE_SEO_META[page] ?? ROUTE_SEO_META.home;
+  const meta = t.seo[page] ?? ROUTE_SEO_META[page] ?? ROUTE_SEO_META.home;
   const canonicalUrl = `${CANONICAL_ORIGIN}${PAGE_PATHS[page]}`;
   const ogImageUrl = `${CANONICAL_ORIGIN}/assets/aistudio/test_logo_header_dark.png`;
+  const ogLocale = t.meta.intlLocale.replace('-', '_');
 
   document.title = meta.title;
   upsertMetaTag('name', 'description', meta.description);
   upsertMetaTag('name', 'keywords', meta.keywords);
   upsertMetaTag('property', 'og:title', meta.title);
   upsertMetaTag('property', 'og:description', meta.description);
+  upsertMetaTag('property', 'og:locale', ogLocale);
   upsertMetaTag('property', 'og:url', canonicalUrl);
   upsertMetaTag('property', 'og:image', ogImageUrl);
   upsertMetaTag('name', 'twitter:title', meta.title);

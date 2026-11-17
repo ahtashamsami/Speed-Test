@@ -5,6 +5,8 @@ import {
   type BlogCategory,
   type BlogPost,
 } from '../data/blogPosts';
+import { useI18n } from '../i18n/LanguageContext';
+import { formatDateLong } from '../utils/formatters';
 
 interface BlogPageProps {
   posts: BlogPost[];
@@ -12,23 +14,85 @@ interface BlogPageProps {
   onRunSpeedTest: () => void;
 }
 
+interface ResolvedBlogPost extends BlogPost {
+  displayCategory: string;
+  displayDate: string;
+}
+
 export const BlogPage = memo(function BlogPage({
   posts,
   highlightedIds,
   onRunSpeedTest,
 }: BlogPageProps) {
+  const { t } = useI18n();
   const [selectedCategory, setSelectedCategory] = useState<'All' | BlogCategory>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [activePostId, setActivePostId] = useState<string | null>(null);
 
+  const localizedPosts = useMemo<ResolvedBlogPost[]>(() => {
+    return posts.map((post) => {
+      const displayCategory = t.blog.categories[post.category] ?? post.category;
+      const rawDate = post.dailyDateKey || post.publishedDateIso || post.publishedDate;
+      const displayDate = formatDateLong(rawDate, t.meta.intlLocale) || post.publishedDate;
+
+      if (post.isDailyHotNews) {
+        const topicDisplay = post.topicTag ?? displayCategory;
+        const sourceLabel = post.sourceName ?? 'RSS';
+        return {
+          ...post,
+          displayCategory,
+          displayDate,
+          readTime: t.blog.dailyReadTime,
+          author: `${t.blog.dailyAuthorPrefix} ${sourceLabel}`,
+          keyTakeaways: [
+            t.blog.dailyTakeawayFeatured
+              .replace('{source}', sourceLabel)
+              .replace('{topic}', topicDisplay),
+            `${t.blog.dailyTakeawaySummaryPrefix} ${post.summary}`,
+            t.blog.dailyTakeawayTip,
+          ],
+          sections: [
+            {
+              heading: `${t.blog.dailySectionBriefingPrefix} ${post.title}`,
+              paragraphs: [
+                post.summary,
+                t.blog.dailyBriefingPara2.replace('{date}', displayDate),
+              ],
+            },
+            {
+              heading: t.blog.dailySectionActionTitle,
+              paragraphs: [
+                t.blog.dailyActionPara1.replace('{topic}', topicDisplay),
+                t.blog.dailyActionPara2,
+              ],
+            },
+          ],
+        };
+      }
+
+      const loc = t.blog.posts[post.id];
+      return {
+        ...post,
+        title: loc?.title ?? post.title,
+        readTime: loc?.readTime ?? post.readTime,
+        author: loc?.author ?? post.author,
+        summary: loc?.summary ?? post.summary,
+        keyTakeaways: loc?.keyTakeaways ?? post.keyTakeaways,
+        sections: loc?.sections ?? post.sections,
+        displayCategory,
+        displayDate,
+      };
+    });
+  }, [posts, t.blog, t.meta.intlLocale]);
+
   const hotNewsCount = useMemo(
-    () => posts.filter((p) => p.category === 'Hot News').length,
-    [posts]
+    () => localizedPosts.filter((p) => p.category === 'Hot News').length,
+    [localizedPosts]
   );
 
   const filteredPosts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return posts.filter((post) => {
+    return localizedPosts.filter((post) => {
       const catMatch = selectedCategory === 'All' || post.category === selectedCategory;
       if (!catMatch) return false;
       if (!q) return true;
@@ -36,18 +100,19 @@ export const BlogPage = memo(function BlogPage({
         post.title.toLowerCase().includes(q) ||
         post.summary.toLowerCase().includes(q) ||
         post.category.toLowerCase().includes(q) ||
+        post.displayCategory.toLowerCase().includes(q) ||
         (post.sourceName?.toLowerCase().includes(q) ?? false) ||
         (post.topicTag?.toLowerCase().includes(q) ?? false)
       );
     });
-  }, [posts, selectedCategory, searchQuery]);
+  }, [localizedPosts, selectedCategory, searchQuery]);
 
   const activePostIndex = useMemo(
-    () => (activePostId ? posts.findIndex((p) => p.id === activePostId) : -1),
-    [posts, activePostId]
+    () => (activePostId ? localizedPosts.findIndex((p) => p.id === activePostId) : -1),
+    [localizedPosts, activePostId]
   );
-  const activePost: BlogPost | null =
-    activePostIndex >= 0 ? posts[activePostIndex] : null;
+  const activePost: ResolvedBlogPost | null =
+    activePostIndex >= 0 ? localizedPosts[activePostIndex] : null;
 
   const openPost = (id: string) => {
     setActivePostId(id);
@@ -55,9 +120,9 @@ export const BlogPage = memo(function BlogPage({
   };
 
   if (activePost) {
-    const prevPost = activePostIndex > 0 ? posts[activePostIndex - 1] : null;
+    const prevPost = activePostIndex > 0 ? localizedPosts[activePostIndex - 1] : null;
     const nextPost =
-      activePostIndex < posts.length - 1 ? posts[activePostIndex + 1] : null;
+      activePostIndex < localizedPosts.length - 1 ? localizedPosts[activePostIndex + 1] : null;
 
     return (
       <article className="space-y-6">
@@ -68,7 +133,9 @@ export const BlogPage = memo(function BlogPage({
             className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Back to All {posts.length} Articles</span>
+            <span>
+              {t.blog.backToAllPrefix} {localizedPosts.length} {t.blog.backToAllSuffix}
+            </span>
           </button>
 
           <div className="flex flex-wrap items-center gap-2.5">
@@ -79,7 +146,9 @@ export const BlogPage = memo(function BlogPage({
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 py-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] text-sky-700 dark:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <span>Original Source ({activePost.sourceName})</span>
+                <span>
+                  {t.blog.originalSourcePrefix} ({activePost.sourceName})
+                </span>
                 <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
               </a>
             )}
@@ -88,7 +157,7 @@ export const BlogPage = memo(function BlogPage({
               onClick={onRunSpeedTest}
               className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-800 dark:bg-sky-500 dark:text-slate-950 dark:hover:bg-sky-400 transition-colors cursor-pointer"
             >
-              <span>Test Your Connection Now</span>
+              <span>{t.blog.testConnectionNow}</span>
             </button>
           </div>
         </div>
@@ -99,14 +168,16 @@ export const BlogPage = memo(function BlogPage({
               {activePost.isDailyHotNews && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-semibold uppercase tracking-wide bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300">
                   <Flame className="w-3 h-3" aria-hidden="true" />
-                  <span>Daily Hot News</span>
+                  <span>{t.blog.dailyHotNewsBadge}</span>
                 </span>
               )}
               <span className="font-semibold text-sky-700 dark:text-sky-400">
-                {activePost.topicTag ? `${activePost.category} · ${activePost.topicTag}` : activePost.category}
+                {activePost.topicTag
+                  ? `${activePost.displayCategory} · ${activePost.topicTag}`
+                  : activePost.displayCategory}
               </span>
               <span aria-hidden="true">·</span>
-              <span>{activePost.publishedDate}</span>
+              <span>{activePost.displayDate}</span>
               <span aria-hidden="true">·</span>
               <span>{activePost.readTime}</span>
               <span aria-hidden="true">·</span>
@@ -127,7 +198,7 @@ export const BlogPage = memo(function BlogPage({
 
           <section className="space-y-2.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl p-5 border border-slate-200/80 dark:border-slate-800">
             <h2 className="font-display text-sm font-semibold text-slate-900 dark:text-slate-100">
-              Key Takeaways
+              {t.blog.keyTakeaways}
             </h2>
             <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-300 list-disc list-inside leading-relaxed">
               {activePost.keyTakeaways.map((item, idx) => (
@@ -190,18 +261,20 @@ export const BlogPage = memo(function BlogPage({
         <div>
           <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
             <BookOpen className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" aria-hidden="true" />
-            <span>TestLine Guides &amp; Daily Hot News Digest</span>
+            <span>{t.blog.eyebrow}</span>
             <span aria-hidden="true">·</span>
-            <span className="font-mono">{posts.length} Articles</span>
+            <span className="font-mono">
+              {localizedPosts.length} {t.blog.articlesCountSuffix}
+            </span>
           </div>
           <h1
             style={{ textWrap: 'balance' }}
             className="mt-1.5 font-display text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100"
           >
-            Internet Speed, IP Diagnostics &amp; Daily Briefings
+            {t.blog.title}
           </h1>
           <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-400 max-w-2xl">
-            In-depth guides on internet speed, IPv4/IPv6, IP scams, IP location, and VPN detection—plus 2 daily hot news articles automatically curated from our live RSS feeds.
+            {t.blog.subtitle}
           </p>
         </div>
 
@@ -214,8 +287,8 @@ export const BlogPage = memo(function BlogPage({
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={`Search ${posts.length} articles...`}
-            aria-label="Search blog articles"
+            placeholder={t.blog.searchPlaceholder.replace('{n}', String(localizedPosts.length))}
+            aria-label={t.blog.searchAria}
             className="w-full min-h-[42px] pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500"
           />
         </div>
@@ -224,12 +297,18 @@ export const BlogPage = memo(function BlogPage({
       {/* Category Filter Tabs */}
       <div
         role="tablist"
-        aria-label="Blog categories"
+        aria-label={t.blog.eyebrow}
         className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A]"
       >
         {(['All', ...BLOG_CATEGORIES] as const).map((cat) => {
           if (cat === 'Hot News' && hotNewsCount === 0) return null;
           const active = selectedCategory === cat;
+          const label =
+            cat === 'All'
+              ? `${t.blog.allLabel} (${localizedPosts.length})`
+              : cat === 'Hot News'
+              ? `${t.blog.hotNewsLabel} (${hotNewsCount})`
+              : t.blog.categories[cat] ?? cat;
           return (
             <button
               key={cat}
@@ -243,11 +322,7 @@ export const BlogPage = memo(function BlogPage({
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
               }`}
             >
-              {cat === 'All'
-                ? `All (${posts.length})`
-                : cat === 'Hot News'
-                ? `Hot News (${hotNewsCount})`
-                : cat}
+              {label}
             </button>
           );
         })}
@@ -256,7 +331,7 @@ export const BlogPage = memo(function BlogPage({
       {filteredPosts.length === 0 ? (
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] p-8 text-center space-y-3">
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            No articles match your current filter.
+            {t.blog.emptyText}
           </p>
           <button
             type="button"
@@ -266,7 +341,7 @@ export const BlogPage = memo(function BlogPage({
             }}
             className="min-h-[40px] px-4 py-2 text-xs font-medium rounded-lg bg-slate-900 text-white dark:bg-sky-500 dark:text-slate-950 cursor-pointer"
           >
-            Reset Filters
+            {t.blog.resetFilters}
           </button>
         </div>
       ) : (
@@ -282,13 +357,13 @@ export const BlogPage = memo(function BlogPage({
                   <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                     {isNew && (
                       <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wide bg-rose-600 text-white">
-                        New
+                        {t.blog.newTag}
                       </span>
                     )}
                     {post.isDailyHotNews && (
                       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold uppercase tracking-wide bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300">
                         <Flame className="w-3 h-3" aria-hidden="true" />
-                        <span>Daily Hot News</span>
+                        <span>{t.blog.dailyHotNewsBadge}</span>
                       </span>
                     )}
                     <span className="font-mono text-slate-400 dark:text-slate-500">
@@ -296,12 +371,14 @@ export const BlogPage = memo(function BlogPage({
                     </span>
                     <span aria-hidden="true">·</span>
                     <span className="font-semibold text-sky-700 dark:text-sky-400">
-                      {post.topicTag ? `${post.category} · ${post.topicTag}` : post.category}
+                      {post.topicTag
+                        ? `${post.displayCategory} · ${post.topicTag}`
+                        : post.displayCategory}
                     </span>
                     <span aria-hidden="true">·</span>
                     <span>{post.readTime}</span>
                     <span aria-hidden="true">·</span>
-                    <span>{post.publishedDate}</span>
+                    <span>{post.displayDate}</span>
                   </div>
 
                   <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100 leading-snug">
@@ -328,7 +405,7 @@ export const BlogPage = memo(function BlogPage({
                     onClick={() => openPost(post.id)}
                     className="inline-flex items-center gap-1.5 min-h-[38px] px-3 py-1.5 text-xs font-semibold rounded-lg text-sky-700 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                   >
-                    <span>Read Article</span>
+                    <span>{t.blog.readArticle}</span>
                     <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
                   </button>
                 </div>

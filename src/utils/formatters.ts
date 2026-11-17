@@ -50,10 +50,43 @@ export function formatLatency(ms: number | null): string {
   return ms.toFixed(1);
 }
 
-export function formatTimeShort(timestamp: number): string {
-  return new Intl.DateTimeFormat(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).format(new Date(timestamp));
+export function formatTimeShort(timestamp: number, locale?: string): string {
+  try {
+    return new Intl.DateTimeFormat(locale || undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }).format(new Date(timestamp));
+  } catch {
+    return new Intl.DateTimeFormat(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }).format(new Date(timestamp));
+  }
+}
+
+export function formatDateLong(dateInput: string | number, locale?: string): string {
+  try {
+    let date: Date;
+    if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput.trim())) {
+      const [y, m, d] = dateInput.trim().split('-').map(Number);
+      date = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+      return new Intl.DateTimeFormat(locale || undefined, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        timeZone: 'UTC',
+      }).format(date);
+    }
+    date = new Date(dateInput);
+    if (Number.isNaN(date.getTime())) return String(dateInput);
+    return new Intl.DateTimeFormat(locale || undefined, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }).format(date);
+  } catch {
+    return String(dateInput);
+  }
 }

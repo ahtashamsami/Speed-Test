@@ -1,5 +1,6 @@
 import { Check, Copy, RefreshCw } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
+import { useI18n } from '../i18n/LanguageContext';
 import type { NetworkDiagnostics } from '../types/network';
 import { formatTimeShort } from '../utils/formatters';
 
@@ -8,7 +9,17 @@ interface NetworkDiagnosticsSectionProps {
   onRefresh: () => void;
 }
 
-function CopyableValue({ value, fallback }: { value: string | null; fallback: string }) {
+function CopyableValue({
+  value,
+  fallback,
+  copyLabel,
+  copiedLabel,
+}: {
+  value: string | null;
+  fallback: string;
+  copyLabel: string;
+  copiedLabel: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -32,24 +43,27 @@ function CopyableValue({ value, fallback }: { value: string | null; fallback: st
 
   return (
     <div className="flex items-center justify-between gap-3 min-w-0">
-      <span className="font-mono text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
+      <span
+        dir="ltr"
+        className="font-mono text-sm font-medium text-slate-900 dark:text-slate-100 truncate"
+      >
         {value}
       </span>
       <button
         type="button"
         onClick={handleCopy}
-        aria-label={`Copy ${value}`}
+        aria-label={`${copyLabel} ${value}`}
         className="inline-flex items-center justify-center gap-1 min-h-[36px] min-w-[36px] px-2.5 py-1.5 text-xs font-medium rounded-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
       >
         {copied ? (
           <>
             <Check className="w-3 h-3 text-teal-600 dark:text-teal-400" aria-hidden="true" />
-            <span>Copied</span>
+            <span>{copiedLabel}</span>
           </>
         ) : (
           <>
             <Copy className="w-3 h-3" aria-hidden="true" />
-            <span>Copy</span>
+            <span>{copyLabel}</span>
           </>
         )}
       </button>
@@ -72,6 +86,7 @@ export const NetworkDiagnosticsSection = memo(function NetworkDiagnosticsSection
   network,
   onRefresh,
 }: NetworkDiagnosticsSectionProps) {
+  const { t } = useI18n();
   const [heroCopied, setHeroCopied] = useState(false);
 
   const locationSummary = useMemo(
@@ -90,6 +105,9 @@ export const NetworkDiagnosticsSection = memo(function NetworkDiagnosticsSection
     }
   };
 
+  const localizedProxyCategory =
+    t.proxy.categories[network.proxyDetection.category] ?? network.proxyDetection.category;
+
   return (
     <section id="network-ip" className="scroll-mt-20 space-y-6">
       {/* Primary Public IP Panel */}
@@ -98,16 +116,21 @@ export const NetworkDiagnosticsSection = memo(function NetworkDiagnosticsSection
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
               <span className="font-medium text-slate-700 dark:text-slate-300">
-                Public IP Address
+                {t.diagnostics.publicIpTitle}
               </span>
               <span aria-hidden="true">·</span>
               <span>
-                {network.ipVersion ? `IPv${network.ipVersion} route` : 'Resolving route'}
+                {network.ipVersion
+                  ? `IPv${network.ipVersion} ${t.diagnostics.routeSuffix}`
+                  : t.diagnostics.resolvingRoute}
               </span>
               {network.lastUpdatedAt && (
                 <>
                   <span aria-hidden="true">·</span>
-                  <span className="font-mono">Updated {formatTimeShort(network.lastUpdatedAt)}</span>
+                  <span className="font-mono">
+                    {t.diagnostics.updatedPrefix}{' '}
+                    {formatTimeShort(network.lastUpdatedAt, t.meta.intlLocale)}
+                  </span>
                 </>
               )}
             </div>
@@ -116,8 +139,11 @@ export const NetworkDiagnosticsSection = memo(function NetworkDiagnosticsSection
               <div className="mt-2.5 h-9 w-64 rounded-md bg-slate-100 dark:bg-slate-800 animate-pulse" />
             ) : (
               <div className="mt-2 flex flex-wrap items-center gap-3">
-                <p className="font-mono text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 break-all">
-                  {network.primaryIp ?? 'Unavailable'}
+                <p
+                  dir="ltr"
+                  className="font-mono text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 break-all"
+                >
+                  {network.primaryIp ?? t.diagnostics.unavailable}
                 </p>
               </div>
             )}
@@ -126,7 +152,7 @@ export const NetworkDiagnosticsSection = memo(function NetworkDiagnosticsSection
               <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
                 {[network.isp, network.asn, locationSummary || null]
                   .filter(Boolean)
-                  .join(' · ') || 'Network metadata unavailable'}
+                  .join(' · ') || t.diagnostics.metadataUnavailable}
               </p>
             )}
           </div>
@@ -141,12 +167,12 @@ export const NetworkDiagnosticsSection = memo(function NetworkDiagnosticsSection
               {heroCopied ? (
                 <>
                   <Check className="w-4 h-4 text-teal-600 dark:text-teal-400" aria-hidden="true" />
-                  <span>Copied IP</span>
+                  <span>{t.diagnostics.copiedIp}</span>
                 </>
               ) : (
                 <>
                   <Copy className="w-4 h-4" aria-hidden="true" />
-                  <span>Copy IP</span>
+                  <span>{t.diagnostics.copyIp}</span>
                 </>
               )}
             </button>
@@ -161,14 +187,14 @@ export const NetworkDiagnosticsSection = memo(function NetworkDiagnosticsSection
                 className={`w-4 h-4 ${network.loading ? 'animate-spin' : ''}`}
                 aria-hidden="true"
               />
-              <span>Refresh</span>
+              <span>{t.diagnostics.refresh}</span>
             </button>
           </div>
         </div>
 
         {network.error && (
           <p className="mt-4 text-xs font-medium text-amber-700 dark:text-amber-400">
-            {network.error}
+            {t.diagnostics.fetchError}
           </p>
         )}
       </div>
@@ -178,55 +204,65 @@ export const NetworkDiagnosticsSection = memo(function NetworkDiagnosticsSection
         {/* Column 1: IPv4 / IPv6 & Provider Details */}
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] p-6">
           <h3 className="font-display text-base font-semibold text-slate-900 dark:text-slate-100">
-            IPv4, IPv6 &amp; Carrier Routing
+            {t.diagnostics.ipv46CardTitle}
           </h3>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Dual-stack client probes combined with edge IP geolocation
+            {t.diagnostics.ipv46CardSubtitle}
           </p>
 
           <dl className="mt-4">
-            <DiagnosticRow label="IPv4 Address">
+            <DiagnosticRow label={t.diagnostics.ipv4Label}>
               {network.loading ? (
                 <div className="h-5 w-36 rounded bg-slate-100 dark:bg-slate-800 animate-pulse ml-auto" />
               ) : (
-                <CopyableValue value={network.ipv4} fallback="Not detected" />
+                <CopyableValue
+                  value={network.ipv4}
+                  fallback={t.diagnostics.notDetected}
+                  copyLabel={t.diagnostics.copy}
+                  copiedLabel={t.diagnostics.copied}
+                />
               )}
             </DiagnosticRow>
 
-            <DiagnosticRow label="IPv6 Address">
+            <DiagnosticRow label={t.diagnostics.ipv6Label}>
               {network.loading ? (
                 <div className="h-5 w-48 rounded bg-slate-100 dark:bg-slate-800 animate-pulse ml-auto" />
               ) : (
                 <CopyableValue
                   value={network.ipv6}
-                  fallback="Not detected (IPv4-only route)"
+                  fallback={t.diagnostics.ipv6NotDetected}
+                  copyLabel={t.diagnostics.copy}
+                  copiedLabel={t.diagnostics.copied}
                 />
               )}
             </DiagnosticRow>
 
-            <DiagnosticRow label="ISP / Carrier">
+            <DiagnosticRow label={t.diagnostics.ispLabel}>
               <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                {network.loading ? 'Resolving...' : network.isp ?? 'Unavailable'}
-              </span>
-            </DiagnosticRow>
-
-            <DiagnosticRow label="Autonomous System (ASN)">
-              <span className="font-mono text-sm text-slate-900 dark:text-slate-100">
                 {network.loading
-                  ? 'Resolving...'
-                  : [network.asn, network.org].filter(Boolean).join(' · ') || 'Unavailable'}
+                  ? t.diagnostics.resolving
+                  : network.isp ?? t.diagnostics.unavailable}
               </span>
             </DiagnosticRow>
 
-            <DiagnosticRow label="Approximate Location">
+            <DiagnosticRow label={t.diagnostics.asnLabel}>
+              <span dir="ltr" className="font-mono text-sm text-slate-900 dark:text-slate-100">
+                {network.loading
+                  ? t.diagnostics.resolving
+                  : [network.asn, network.org].filter(Boolean).join(' · ') ||
+                    t.diagnostics.unavailable}
+              </span>
+            </DiagnosticRow>
+
+            <DiagnosticRow label={t.diagnostics.locationLabel}>
               <span className="text-sm text-slate-900 dark:text-slate-100">
                 {network.loading
-                  ? 'Resolving...'
-                  : locationSummary || 'Unavailable'}
+                  ? t.diagnostics.resolving
+                  : locationSummary || t.diagnostics.unavailable}
               </span>
             </DiagnosticRow>
 
-            <DiagnosticRow label="Proxy / VPN Check">
+            <DiagnosticRow label={t.diagnostics.proxyCheckLabel}>
               <span
                 className={`text-sm font-medium ${
                   network.loading
@@ -237,10 +273,10 @@ export const NetworkDiagnosticsSection = memo(function NetworkDiagnosticsSection
                 }`}
               >
                 {network.loading
-                  ? 'Inspecting...'
+                  ? t.diagnostics.inspecting
                   : network.proxyDetection.detected
-                  ? network.proxyDetection.category
-                  : 'Direct connection (None detected)'}
+                  ? localizedProxyCategory
+                  : t.diagnostics.directConnectionNone}
               </span>
             </DiagnosticRow>
           </dl>
@@ -252,48 +288,50 @@ export const NetworkDiagnosticsSection = memo(function NetworkDiagnosticsSection
           className="scroll-mt-20 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] p-6"
         >
           <h3 className="font-display text-base font-semibold text-slate-900 dark:text-slate-100">
-            DNS Hints &amp; Link Diagnostics
+            {t.diagnostics.dnsCardTitle}
           </h3>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            Reverse PTR record, DoH resolver reachability, and browser transport signals
+            {t.diagnostics.dnsCardSubtitle}
           </p>
 
           <dl className="mt-4">
-            <DiagnosticRow label="Reverse DNS (PTR)">
+            <DiagnosticRow label={t.diagnostics.ptrLabel}>
               {network.loading ? (
                 <div className="h-5 w-44 rounded bg-slate-100 dark:bg-slate-800 animate-pulse ml-auto" />
               ) : (
                 <CopyableValue
                   value={network.ptrHostname}
-                  fallback="No PTR record published"
+                  fallback={t.diagnostics.noPtr}
+                  copyLabel={t.diagnostics.copy}
+                  copiedLabel={t.diagnostics.copied}
                 />
               )}
             </DiagnosticRow>
 
-            <DiagnosticRow label="DoH Resolver Probe">
-              <span className="font-mono text-sm text-slate-900 dark:text-slate-100">
+            <DiagnosticRow label={t.diagnostics.dohProbeLabel}>
+              <span dir="ltr" className="font-mono text-sm text-slate-900 dark:text-slate-100">
                 {network.loading
-                  ? 'Probing...'
+                  ? t.diagnostics.probing
                   : network.dohReachable
-                  ? `${network.dohResolver} · Reachable`
-                  : `${network.dohResolver} · Blocked or unreachable`}
+                  ? `${network.dohResolver} · ${t.diagnostics.reachable}`
+                  : `${network.dohResolver} · ${t.diagnostics.blockedOrUnreachable}`}
               </span>
             </DiagnosticRow>
 
-            <DiagnosticRow label="DNS Query Latency">
-              <span className="font-mono text-sm text-slate-900 dark:text-slate-100">
+            <DiagnosticRow label={t.diagnostics.dnsLatencyLabel}>
+              <span dir="ltr" className="font-mono text-sm text-slate-900 dark:text-slate-100">
                 {network.loading
-                  ? 'Probing...'
+                  ? t.diagnostics.probing
                   : network.dohLatencyMs !== null
                   ? `${network.dohLatencyMs.toFixed(1)} ms`
-                  : 'Unavailable'}
+                  : t.diagnostics.unavailable}
               </span>
             </DiagnosticRow>
 
-            <DiagnosticRow label="Transport Protocol">
-              <span className="font-mono text-sm text-slate-900 dark:text-slate-100">
+            <DiagnosticRow label={t.diagnostics.protocolLabel}>
+              <span dir="ltr" className="font-mono text-sm text-slate-900 dark:text-slate-100">
                 {network.loading
-                  ? 'Checking...'
+                  ? t.diagnostics.checking
                   : [
                       network.protocol?.toUpperCase(),
                       network.httpVersion ? `HTTP/${network.httpVersion}` : null,
@@ -303,27 +341,29 @@ export const NetworkDiagnosticsSection = memo(function NetworkDiagnosticsSection
               </span>
             </DiagnosticRow>
 
-            <DiagnosticRow label="Browser Link Hint">
-              <span className="font-mono text-sm text-slate-900 dark:text-slate-100">
+            <DiagnosticRow label={t.diagnostics.linkHintLabel}>
+              <span dir="ltr" className="font-mono text-sm text-slate-900 dark:text-slate-100">
                 {network.connectionHint
                   ? [
                       network.connectionHint.effectiveType?.toUpperCase(),
                       network.connectionHint.downlinkMbps !== undefined
-                        ? `~${network.connectionHint.downlinkMbps} Mbps cap`
+                        ? `~${network.connectionHint.downlinkMbps} ${t.diagnostics.capSuffix}`
                         : null,
                       network.connectionHint.rttMs !== undefined
-                        ? `${network.connectionHint.rttMs} ms RTT`
+                        ? `${network.connectionHint.rttMs} ${t.diagnostics.rttSuffix}`
                         : null,
                     ]
                       .filter(Boolean)
-                      .join(' · ') || 'Exposed without metrics'
-                  : 'Not exposed by browser'}
+                      .join(' · ') || t.diagnostics.exposedNoMetrics
+                  : t.diagnostics.notExposed}
               </span>
             </DiagnosticRow>
 
-            <DiagnosticRow label="Timezone">
-              <span className="font-mono text-sm text-slate-900 dark:text-slate-100">
-                {network.loading ? 'Resolving...' : network.timezone ?? 'Unavailable'}
+            <DiagnosticRow label={t.diagnostics.timezoneLabel}>
+              <span dir="ltr" className="font-mono text-sm text-slate-900 dark:text-slate-100">
+                {network.loading
+                  ? t.diagnostics.resolving
+                  : network.timezone ?? t.diagnostics.unavailable}
               </span>
             </DiagnosticRow>
           </dl>

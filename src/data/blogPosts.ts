@@ -17,6 +17,7 @@ export interface BlogPost {
   title: string;
   category: BlogCategory;
   publishedDate: string;
+  publishedDateIso?: string;
   readTime: string;
   author: string;
   summary: string;
@@ -45,6 +46,7 @@ export const BLOG_POSTS: BlogPost[] = [
     title: 'Why Your Real-World Download Speed Differs From Your ISP Plan',
     category: 'Internet Speed',
     publishedDate: 'November 14, 2026',
+    publishedDateIso: '2026-11-14',
     readTime: '5 min read',
     author: 'TestLine Engineering',
     summary:
@@ -77,6 +79,7 @@ export const BLOG_POSTS: BlogPost[] = [
     title: 'Ping vs. Jitter Explained: What Actually Ruins Video Calls and Gaming',
     category: 'Internet Speed',
     publishedDate: 'November 11, 2026',
+    publishedDateIso: '2026-11-11',
     readTime: '5 min read',
     author: 'TestLine Engineering',
     summary:
@@ -108,6 +111,7 @@ export const BLOG_POSTS: BlogPost[] = [
     title: 'IPv4 vs. IPv6 Explained: Why Dual-Stack Networks Matter Today',
     category: 'IP Addresses',
     publishedDate: 'November 8, 2026',
+    publishedDateIso: '2026-11-08',
     readTime: '6 min read',
     author: 'TestLine Network Research',
     summary:
@@ -138,6 +142,7 @@ export const BLOG_POSTS: BlogPost[] = [
     title: 'Public IP vs. Private IP & How Reverse DNS (PTR) Identifies Carriers',
     category: 'IP Addresses',
     publishedDate: 'November 5, 2026',
+    publishedDateIso: '2026-11-05',
     readTime: '4 min read',
     author: 'TestLine Network Research',
     summary:
@@ -169,6 +174,7 @@ export const BLOG_POSTS: BlogPost[] = [
     title: 'How to Spot Fake "Your IP Has Been Hacked" Scareware & Support Scams',
     category: 'IP Scams',
     publishedDate: 'November 2, 2026',
+    publishedDateIso: '2026-11-02',
     readTime: '5 min read',
     author: 'TestLine Security Desk',
     summary:
@@ -199,6 +205,7 @@ export const BLOG_POSTS: BlogPost[] = [
     title: 'IP Spoofing, Header Forgery & Residential Proxy Scams Explained',
     category: 'IP Scams',
     publishedDate: 'October 29, 2026',
+    publishedDateIso: '2026-10-29',
     readTime: '6 min read',
     author: 'TestLine Security Desk',
     summary:
@@ -229,6 +236,7 @@ export const BLOG_POSTS: BlogPost[] = [
     title: 'How IP Geolocation Works—and Why Your IP City Is Often Miles Off',
     category: 'IP Location',
     publishedDate: 'October 25, 2026',
+    publishedDateIso: '2026-10-25',
     readTime: '5 min read',
     author: 'TestLine Network Research',
     summary:
@@ -259,6 +267,7 @@ export const BLOG_POSTS: BlogPost[] = [
     title: 'Timezone Mismatch & Carrier Routing: Why Sites Misplace Your Region',
     category: 'IP Location',
     publishedDate: 'October 21, 2026',
+    publishedDateIso: '2026-10-21',
     readTime: '4 min read',
     author: 'TestLine Network Research',
     summary:
@@ -289,6 +298,7 @@ export const BLOG_POSTS: BlogPost[] = [
     title: 'How Websites Detect a VPN, Proxy, or Datacenter IP Address',
     category: 'VPN IP Status',
     publishedDate: 'October 17, 2026',
+    publishedDateIso: '2026-10-17',
     readTime: '6 min read',
     author: 'TestLine Security Desk',
     summary:
@@ -319,6 +329,7 @@ export const BLOG_POSTS: BlogPost[] = [
     title: 'DNS Leaks, IPv6 Leaks & Split Tunneling: Testing Your True VPN Status',
     category: 'VPN IP Status',
     publishedDate: 'October 12, 2026',
+    publishedDateIso: '2026-10-12',
     readTime: '5 min read',
     author: 'TestLine Security Desk',
     summary:

@@ -46,6 +46,21 @@ export interface BrowserConnectionHint {
   saveData?: boolean;
 }
 
+export type ProxySignalCode =
+  | 'proxy_flag'
+  | 'hosting_flag'
+  | 'provider_keyword'
+  | 'via_header'
+  | 'multi_hop'
+  | 'ip_mismatch'
+  | 'timezone_mismatch';
+
+export interface ProxySignalEntry {
+  code: ProxySignalCode;
+  arg1?: string;
+  arg2?: string;
+}
+
 export interface ProxyDetectionResult {
   detected: boolean;
   category:
@@ -64,6 +79,7 @@ export interface ProxyDetectionResult {
   forwardedHopCount: number;
   matchedProviderSignal: string | null;
   signals: string[];
+  signalEntries?: ProxySignalEntry[];
 }
 
 export interface NetworkDiagnostics {
@@ -78,6 +94,7 @@ export interface NetworkDiagnostics {
   region: string | null;
   country: string | null;
   countryCode: string | null;
+  continentCode?: string | null;
   timezone: string | null;
   ptrHostname: string | null;
   dohReachable: boolean | null;
