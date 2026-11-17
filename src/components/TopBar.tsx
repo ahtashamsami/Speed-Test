@@ -1,5 +1,6 @@
 import { Square } from 'lucide-react';
 import { memo } from 'react';
+import { PWAInstallButton } from './PWAInstallButton';
 
 export type AppPage =
   | 'home'
@@ -106,7 +107,7 @@ export const TopBar = memo(function TopBar({
         </nav>
 
         <div className="shrink-0 min-w-[2px]">
-          {isRunning && (
+          {isRunning ? (
             <button
               type="button"
               onClick={onStopTest}
@@ -115,6 +116,8 @@ export const TopBar = memo(function TopBar({
               <Square className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
               <span>Stop Test</span>
             </button>
+          ) : (
+            <PWAInstallButton />
           )}
         </div>
       </div>

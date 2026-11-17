@@ -54,6 +54,7 @@ export function useInternetStatus() {
 
     window.addEventListener('offline', handleOffline);
     window.addEventListener('online', handleOnline);
+    void checkConnection();
 
     return () => {
       window.removeEventListener('offline', handleOffline);
