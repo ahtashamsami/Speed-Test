@@ -1513,10 +1513,19 @@ async function startServer() {
         try {
           const transformed = await vite.transformRequest(req.originalUrl || '/@vite/client');
           if (transformed?.code) {
-            const safeCode = transformed.code.replace(
-              /transport\.connect\s*\(\s*createHMRHandler\s*\(\s*handleMessage\s*\)\s*\)\s*;?/,
-              '/* HMR disabled (DISABLE_HMR=true): WebSocket connection skipped */'
-            );
+            const safeCode = transformed.code
+              .replace(
+                /transport\.connect\s*\(\s*createHMRHandler\s*\(\s*handleMessage\s*\)\s*\)\s*;?/,
+                '/* HMR disabled (DISABLE_HMR=true): WebSocket connection skipped */'
+              )
+              .replace(
+                /else throw new SendBeforeConnectError\("send was called before connect"\);/,
+                'else return;'
+              )
+              .replace(
+                /else throw new SendBeforeConnectError\("invoke was called before connect"\);/,
+                'else return;'
+              );
             res.set({
               'Content-Type': 'application/javascript; charset=utf-8',
               'Cache-Control': 'no-store',
