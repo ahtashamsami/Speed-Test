@@ -182,6 +182,8 @@ export default function App() {
     newsLoading,
     newsRefreshing,
     newsError,
+    isShowingCachedNews,
+    cachedNewsSavedAt,
     refreshNews,
     allBlogPosts,
     newsNotificationCount,
@@ -614,6 +616,8 @@ export default function App() {
               loading={newsLoading}
               refreshing={newsRefreshing}
               error={newsError}
+              usingCachedFallback={isShowingCachedNews}
+              cachedSavedAt={cachedNewsSavedAt}
               highlightedIds={highlightedNewsSet}
               onRefresh={() => {
                 void refreshNews();

@@ -7,6 +7,8 @@ interface NewsPageProps {
   loading: boolean;
   refreshing: boolean;
   error: string | null;
+  usingCachedFallback?: boolean;
+  cachedSavedAt?: string | null;
   highlightedIds: Set<string>;
   onRefresh: () => void;
 }
@@ -31,6 +33,8 @@ export const NewsPage = memo(function NewsPage({
   loading,
   refreshing,
   error,
+  usingCachedFallback = false,
+  cachedSavedAt = null,
   highlightedIds,
   onRefresh,
 }: NewsPageProps) {
@@ -106,6 +110,34 @@ export const NewsPage = memo(function NewsPage({
           </button>
         </div>
       </div>
+
+      {/* Cached Fallback Notice Banner */}
+      {usingCachedFallback && data && data.items.length > 0 && (
+        <div
+          role="status"
+          className="rounded-xl border border-amber-300/80 dark:border-amber-800/80 bg-amber-50/70 dark:bg-amber-950/25 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+        >
+          <div className="flex items-start sm:items-center gap-2.5 text-xs sm:text-sm text-slate-800 dark:text-slate-200">
+            <AlertCircle
+              className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5 sm:mt-0"
+              aria-hidden="true"
+            />
+            <span>
+              Live RSS feeds are currently unreachable. Showing recently cached stories saved on this device
+              {cachedSavedAt ? ` (${formatPublishedDate(cachedSavedAt)})` : ''}.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={refreshing}
+            className="inline-flex items-center justify-center gap-1.5 min-h-[34px] px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-white dark:bg-sky-500 dark:text-slate-950 hover:opacity-90 disabled:opacity-50 whitespace-nowrap shrink-0 cursor-pointer"
+          >
+            <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} aria-hidden="true" />
+            <span>{refreshing ? 'Retrying...' : 'Retry Live Feeds'}</span>
+          </button>
+        </div>
+      )}
 
       {/* Source Tabs */}
       {data?.sources && data.sources.length > 0 && (

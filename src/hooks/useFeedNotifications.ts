@@ -67,26 +67,56 @@ function writeStoredIds(key: string, ids: string[]): void {
   }
 }
 
-function readCachedNews(): NewsApiResponse | null {
+interface CachedNewsRecord {
+  savedAt: string;
+  payload: NewsApiResponse;
+}
+
+function readCachedNews(): CachedNewsRecord | null {
   try {
     const raw = localStorage.getItem(CACHED_NEWS_STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as NewsApiResponse;
-    if (parsed && Array.isArray(parsed.items) && parsed.items.length > 0) {
-      return parsed;
+    const parsed = JSON.parse(raw) as Partial<CachedNewsRecord> & Partial<NewsApiResponse>;
+
+    if (
+      parsed &&
+      parsed.payload &&
+      Array.isArray(parsed.payload.items) &&
+      parsed.payload.items.length > 0
+    ) {
+      return {
+        savedAt:
+          typeof parsed.savedAt === 'string'
+            ? parsed.savedAt
+            : parsed.payload.updatedAt || new Date().toISOString(),
+        payload: parsed.payload,
+      };
     }
+
+    // Backward compatibility with plain NewsApiResponse stored previously
+    if (parsed && Array.isArray(parsed.items) && parsed.items.length > 0) {
+      const payload = parsed as NewsApiResponse;
+      return {
+        savedAt: payload.updatedAt || new Date().toISOString(),
+        payload,
+      };
+    }
+
     return null;
   } catch {
     return null;
   }
 }
 
-function writeCachedNews(payload: NewsApiResponse): void {
+function writeCachedNews(payload: NewsApiResponse): string {
+  const savedAt = new Date().toISOString();
   try {
-    localStorage.setItem(CACHED_NEWS_STORAGE_KEY, JSON.stringify(payload));
+    const record: CachedNewsRecord = { savedAt, payload };
+    localStorage.setItem(CACHED_NEWS_STORAGE_KEY, JSON.stringify(record));
   } catch {
     // Ignore storage quota/privacy mode failures
   }
+  return savedAt;
 }
 
 function readCachedDailyBlogs(): BlogPost[] {
@@ -236,11 +266,17 @@ async function fetchNewsViaClientFallback(): Promise<NewsApiResponse | null> {
 }
 
 export function useFeedNotifications(activePage: AppPage, isOnline: boolean) {
-  const initialCachedNews = useMemo(() => readCachedNews(), []);
-  const [newsData, setNewsData] = useState<NewsApiResponse | null>(initialCachedNews);
-  const [newsLoading, setNewsLoading] = useState<boolean>(() => !initialCachedNews);
+  const initialCachedRecord = useMemo(() => readCachedNews(), []);
+  const [newsData, setNewsData] = useState<NewsApiResponse | null>(
+    () => initialCachedRecord?.payload ?? null
+  );
+  const [newsLoading, setNewsLoading] = useState<boolean>(() => !initialCachedRecord);
   const [newsRefreshing, setNewsRefreshing] = useState(false);
   const [newsError, setNewsError] = useState<string | null>(null);
+  const [isShowingCachedNews, setIsShowingCachedNews] = useState(false);
+  const [cachedNewsSavedAt, setCachedNewsSavedAt] = useState<string | null>(
+    () => initialCachedRecord?.savedAt ?? null
+  );
 
   const [dailyBlogs, setDailyBlogs] = useState<BlogPost[]>(() => readCachedDailyBlogs());
   const [dailyBlogsDateKey, setDailyBlogsDateKey] = useState<string | null>(null);
@@ -258,6 +294,23 @@ export function useFeedNotifications(activePage: AppPage, isOnline: boolean) {
   const newsDataRef = useRef<NewsApiResponse | null>(newsData);
   newsDataRef.current = newsData;
   const inFlightRef = useRef(false);
+
+  const applyCachedNewsFallback = useCallback(() => {
+    const cachedFromStorage = readCachedNews();
+    if (cachedFromStorage && cachedFromStorage.payload.items.length > 0) {
+      setNewsData(cachedFromStorage.payload);
+      setCachedNewsSavedAt(cachedFromStorage.savedAt);
+      setIsShowingCachedNews(true);
+      setNewsError(null);
+      return true;
+    }
+    if (newsDataRef.current && newsDataRef.current.items.length > 0) {
+      setIsShowingCachedNews(true);
+      setNewsError(null);
+      return true;
+    }
+    return false;
+  }, []);
 
   const fetchFeedsAndDailyBlogs = useCallback(async (forceRefresh = false) => {
     if (inFlightRef.current && !forceRefresh) return;
@@ -304,16 +357,18 @@ export function useFeedNotifications(activePage: AppPage, isOnline: boolean) {
       }
 
       if (resolvedNews && resolvedNews.items.length > 0) {
+        const savedAt = writeCachedNews(resolvedNews);
         setNewsData(resolvedNews);
-        writeCachedNews(resolvedNews);
+        setCachedNewsSavedAt(savedAt);
+        setIsShowingCachedNews(false);
         setNewsError(null);
-      } else if (!newsDataRef.current) {
+      } else if (!applyCachedNewsFallback()) {
         setNewsError(
           'Unable to load live RSS feeds right now. Check your connection and try refreshing.'
         );
       }
     } catch {
-      if (!newsDataRef.current) {
+      if (!applyCachedNewsFallback()) {
         setNewsError(
           'Unable to load live RSS feeds right now. Check your connection and try refreshing.'
         );
@@ -323,7 +378,7 @@ export function useFeedNotifications(activePage: AppPage, isOnline: boolean) {
       setNewsLoading(false);
       setNewsRefreshing(false);
     }
-  }, []);
+  }, [applyCachedNewsFallback]);
 
   useEffect(() => {
     if (!isOnline) return;
@@ -427,6 +482,8 @@ export function useFeedNotifications(activePage: AppPage, isOnline: boolean) {
     newsLoading,
     newsRefreshing,
     newsError,
+    isShowingCachedNews,
+    cachedNewsSavedAt,
     refreshNews: () => fetchFeedsAndDailyBlogs(true),
     allBlogPosts,
     dailyBlogsDateKey,
