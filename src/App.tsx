@@ -9,6 +9,7 @@ import { NetworkDiagnosticsSection } from './components/NetworkDiagnosticsSectio
 import { OfflineRunnerGame } from './components/OfflineRunnerGame';
 import { ProxyVpnCard } from './components/ProxyVpnCard';
 import { PAGE_PATHS, TopBar, type AppPage } from './components/TopBar';
+import { useFeedNotifications } from './hooks/useFeedNotifications';
 import { useInternetStatus } from './hooks/useInternetStatus';
 import type {
   NetworkDiagnostics,
@@ -23,6 +24,12 @@ import { applyRouteSeo } from './utils/seoManager';
 import { INITIAL_SPEED_METRICS, runSpeedBenchmark } from './utils/speedEngine';
 
 // Lazy-loaded non-critical chunks to shrink initial critical JS bundle and improve LCP
+const NewsPage = lazy(() =>
+  import('./components/NewsPage').then((m) => ({ default: m.NewsPage }))
+);
+const BlogPage = lazy(() =>
+  import('./components/BlogPage').then((m) => ({ default: m.BlogPage }))
+);
 const SessionHistory = lazy(() =>
   import('./components/SessionHistory').then((m) => ({ default: m.SessionHistory }))
 );
@@ -74,6 +81,10 @@ function parsePageFromLocation(): AppPage {
   const slug = path !== '/' ? path.replace(/^\//, '') : hash;
 
   switch (slug) {
+    case 'news':
+      return 'news';
+    case 'blog':
+      return 'blog';
     case 'about':
       return 'about';
     case 'privacy':
@@ -166,6 +177,18 @@ export default function App() {
     checkConnection,
     markOffline,
   } = useInternetStatus();
+  const {
+    newsData,
+    newsLoading,
+    newsRefreshing,
+    newsError,
+    refreshNews,
+    allBlogPosts,
+    newsNotificationCount,
+    blogNotificationCount,
+    highlightedNewsSet,
+    highlightedBlogSet,
+  } = useFeedNotifications(activePage, isOnline);
   const [showOfflineGame, setShowOfflineGame] = useState<boolean>(() => !isOnline);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [showDuplicatePdfModal, setShowDuplicatePdfModal] = useState(false);
@@ -415,6 +438,8 @@ export default function App() {
       <TopBar
         isRunning={isRunning}
         activePage={activePage}
+        newsNotificationCount={newsNotificationCount}
+        blogNotificationCount={blogNotificationCount}
         onNavigate={navigateTo}
         onStopTest={stopTest}
       />
@@ -425,12 +450,17 @@ export default function App() {
             {/* Above-the-fold Critical LCP Path: Workspace Control Bar + Speed Stage */}
             <section id="speed-test" className="scroll-mt-20 space-y-5">
               <div className="flex flex-wrap items-center justify-between gap-3.5 sm:gap-4">
-                <h1
-                  style={{ textWrap: 'balance' }}
-                  className="font-display text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100"
-                >
-                  Internet Speed Test &amp; IP Diagnostics
-                </h1>
+                <div className="space-y-1">
+                  <h1
+                    style={{ textWrap: 'balance' }}
+                    className="font-display text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100"
+                  >
+                    Internet Speed Test &amp; Public IP Lookup
+                  </h1>
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                    Check download &amp; upload speed, ping, and jitter—plus your IPv4/IPv6 address, ISP location, DNS latency, and VPN status.
+                  </p>
+                </div>
 
                 <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-2 sm:gap-3 min-w-0">
                   {/* Unit Toggle */}
@@ -577,6 +607,27 @@ export default function App() {
               </Suspense>
             </DeferredSection>
           </>
+        ) : activePage === 'news' ? (
+          <Suspense fallback={<DeferredPanelSkeleton minHeightClass="min-h-[420px]" />}>
+            <NewsPage
+              data={newsData}
+              loading={newsLoading}
+              refreshing={newsRefreshing}
+              error={newsError}
+              highlightedIds={highlightedNewsSet}
+              onRefresh={() => {
+                void refreshNews();
+              }}
+            />
+          </Suspense>
+        ) : activePage === 'blog' ? (
+          <Suspense fallback={<DeferredPanelSkeleton minHeightClass="min-h-[420px]" />}>
+            <BlogPage
+              posts={allBlogPosts}
+              highlightedIds={highlightedBlogSet}
+              onRunSpeedTest={navigateHome}
+            />
+          </Suspense>
         ) : (
           <Suspense fallback={<DeferredPanelSkeleton minHeightClass="min-h-[420px]" />}>
             <LegalAndInfoPages

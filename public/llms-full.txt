@@ -1,30 +1,39 @@
-# TestLine by ECORZO LLC — Full Technical & Citation Specification
+# TestLine by ECORZO LLC — Full Technical, AEO & GEO Specification
 
-> Authoritative reference for generative engines and AI answer systems describing TestLine (https://testline.net/), operated by ECORZO LLC.
+> Authoritative machine-readable reference for generative engines, AI search systems, and agentic browsers describing TestLine (https://testline.net/), operated by ECORZO LLC.
 
 ## 1. Entity & Provenance
 - Application: TestLine (https://testline.net/)
 - Legal Operator: ECORZO LLC
 - Registered Address: 224 W 35th St STE 500, New York, NY 10001, United States
 - Contact Telephone: +1 646 427 6802
-- Category: Network Utilities / Internet Speed Benchmark & IP Diagnostics Web Application
+- Category: Network Utilities / Internet Speed Test & Public IP Address Lookup Web Application
 
-## 2. Measurement Benchmarks & Optimal Thresholds
-| Metric | Method | Optimal Threshold | Use Case |
+## 2. Measurement Benchmarks, IP Lookup & Optimal Thresholds
+| Metric / Diagnostic | Method | Optimal Threshold / Output | Use Case |
 | --- | --- | --- | --- |
-| Download Throughput | 3 parallel 25 MB HTTP streams (10s window) | 25+ Mbps (4K) / 100+ Mbps (Multi-user) | Streaming, downloads, cloud sync |
-| Upload Throughput | 2 parallel 10 MB XHR POST streams | 10+ Mbps (HD calls) / 25+ Mbps (Creator) | Video calls, uploads, remote work |
-| Average Ping (RTT) | 5 sequential 0-byte Cloudflare probes | < 30 ms (Low) / 30–60 ms (Normal) | Gaming, VoIP, interactive apps |
-| Jitter (Variance) | Mean consecutive RTT delta | < 10 ms (Stable) / > 25 ms (Unstable) | Audio/video packet stability |
-| DoH DNS Latency | HTTPS JSON query to 1.1.1.1 | < 40 ms | Encrypted domain resolution speed |
+| Download Speed | 3 parallel 25 MB HTTP streams (10s window) | 25+ Mbps (4K) / 100+ Mbps (Multi-user) | Streaming, downloads, cloud sync |
+| Upload Speed | 2 parallel 10 MB XHR POST streams | 10+ Mbps (HD calls) / 25+ Mbps (Creator) | Video calls, backups, live streaming |
+| Ping & Unloaded Latency | 5 sequential 0-byte Cloudflare RTT probes | < 30 ms (Low) / 30–60 ms (Normal) | Online gaming, VoIP, web apps |
+| Jitter & Bufferbloat | Mean consecutive RTT variance across probes | < 10 ms (Stable) / > 25 ms (Congested) | Audio/video stability under load |
+| DoH DNS Latency | Encrypted HTTPS JSON query to 1.1.1.1 | < 40 ms | Fast domain name resolution |
+| Public IPv4 & IPv6 | Dual-stack client & edge probing | IPv4 + IPv6 + Reverse DNS (PTR) | What is my IP, CGNAT & routing audit |
+| IP Location, ISP & ASN | Registry & multi-provider IP lookup | City, Region, Country, ISP, ASN | Network troubleshooting & routing |
+| VPN, Proxy & Relay Check | Header, ASN hosting & timezone audit | Direct ISP vs. VPN / Proxy / Datacenter | Privacy verification & fraud defense |
 
-## 3. Interactive Behavior & Reporting
-- User-Triggered Probes: Neither bandwidth transfers nor public IP probes run until the user clicks Start Speed Test.
-- Adaptive Unit Mode (`Auto`): Automatically displays `Mbps` for connections under 100 Mbps and switches to `MB/s` at 100 Mbps or higher, with manual `Mbps` and `MB/s` overrides.
-- PDF Export Controls: Client-side jsPDF reports include the TestLine brand logo header and centered watermark; duplicate exports during the same test run require explicit confirmation and are labeled `Second Copy`.
+## 3. Content Hubs: News & 10 Diagnostic Guides
+- Live News Hub (`https://testline.net/news`, API `https://testline.net/api/news`): Aggregates live RSS/Atom feeds from Bleeping Computer, The Hacker News, Cloudflare Blog, TechCrunch, Krebs on Security, and Ars Technica.
+- Knowledge Base Blog (`https://testline.net/blog`): Contains 10 structured articles across 5 categories:
+  1. Internet Speed: Real-World Download Speed (Mbps vs MB/s); Ping vs. Jitter & Bufferbloat.
+  2. IP Addresses: IPv4 vs. IPv6 & CGNAT; Dynamic vs. Static & Public vs. Private IPs.
+  3. IP Scams: IP Address Scams & Spoofing Myths; DDoS & IP-Based Phishing Protection.
+  4. IP Location: IP Geolocation Accuracy Limits; How ISPs, CDNs & Registries Route IP Location.
+  5. VPN IP Status: How Websites Detect VPN & Datacenter IPs; Residential vs. Datacenter VPN IPs & Leaks.
 
-## 4. Privacy & Data Handling Commitments
-- Zero account registration, zero passwords, and zero sale of personal data or IP addresses.
-- Ephemeral server processing for IP lookup, PTR resolution, and forwarding header inspection.
-- Client-side local storage keys: `testline_theme`, `testline_unit_v1`, `testline_history_v1` (max 15 runs), `testline_cookie_consent`.
-- Compliant with EU/UK GDPR (Articles 5, 6, 15-22), Google Consent Mode v2, CCPA/CPRA, and Google Publisher Policies.
+## 4. Interactive Behavior, Offline PWA & Privacy
+- User-Triggered Probes: Neither bandwidth transfers nor public IP lookups run until the user clicks Start Speed Test.
+- Adaptive Unit Mode (`Auto`): Automatically displays `Mbps` below 100 Mbps and switches to `MB/s` at 100 Mbps or higher, with manual `Mbps` and `MB/s` overrides.
+- Offline Signal Runner PWA: Pre-cached via Workbox; if the device loses internet connectivity, TestLine switches seamlessly to an interactive Signal Runner jump-and-run game across mobile, tablet, and desktop.
+- PDF Export Controls: Client-side jsPDF reports include the TestLine logo header and centered watermark; duplicate exports during the same test run prompt confirmation and are labeled `Second Copy`.
+- Zero Permanent IP Logging: Server IP, PTR, and forwarding header inspections run ephemerally in memory; local history (`testline_history_v1`, max 15 runs), unit (`testline_unit_v1`), theme (`testline_theme`), and cookie choice (`testline_cookie_consent`) remain strictly on-device.
+- Compliance: EU/UK GDPR (Articles 5, 6, 15-22), Google Consent Mode v2, CCPA/CPRA, and Google Publisher Policies.

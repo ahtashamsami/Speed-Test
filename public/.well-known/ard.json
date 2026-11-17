@@ -3,40 +3,104 @@
   "entries": [
     {
       "identifier": "urn:air:testline.net:diagnostics:speed-and-ip",
-      "displayName": "TestLine Internet Speed Test & IP Diagnostics",
+      "displayName": "TestLine Internet Speed Test & Public IP Lookup",
       "type": "text/html",
       "url": "https://testline.net/",
-      "description": "Real-time internet speed benchmark (download, upload, ping, jitter) with dual-stack IPv4/IPv6 lookup, DNS-over-HTTPS latency check, proxy/VPN detection, and client-side PDF reporting by ECORZO LLC.",
+      "description": "Free real-time internet speed test (download speed, upload speed, ping, jitter, bufferbloat sensitivity) and public IPv4/IPv6 lookup with IP geolocation, ISP, ASN, reverse DNS (PTR), DoH latency, VPN/proxy detection, PDF export, and offline Signal Runner PWA game by ECORZO LLC.",
       "representativeQueries": [
-        "Test my internet download and upload speed",
-        "Check my ping latency and jitter for video calls",
+        "How fast is my internet download and upload speed?",
+        "Run an internet speed test in Mbps or MB/s",
         "What is my public IPv4 and IPv6 address?",
-        "Am I behind a VPN, proxy, or datacenter relay?"
+        "Check my IP location, ISP, ASN, ping, jitter, and VPN status"
       ],
       "tags": [
-        "speed-test",
-        "bandwidth",
-        "latency",
-        "ip-diagnostics",
-        "network-tools"
+        "internet-speed-test",
+        "what-is-my-ip",
+        "ip-lookup",
+        "ipv4",
+        "ipv6",
+        "ip-location",
+        "download-speed",
+        "upload-speed",
+        "ping-jitter",
+        "bufferbloat",
+        "vpn-detection"
       ]
     },
     {
       "identifier": "urn:air:testline.net:diagnostics:network-info",
-      "displayName": "TestLine Network & IP Inspection API",
+      "displayName": "TestLine Live IP, Geolocation, ASN & VPN Inspection API",
       "type": "application/json",
       "url": "https://testline.net/api/network-info",
-      "description": "Ephemeral JSON diagnostic endpoint returning observed client IPv4/IPv6 address, reverse DNS (PTR) hostname, ISP/ASN metadata, geolocation city/country, protocol version, and proxy/hosting indicator flags.",
+      "description": "Ephemeral JSON diagnostic endpoint returning observed client IPv4/IPv6 address, reverse DNS (PTR) hostname, ISP, organization, ASN, city/region/country geolocation, protocol version, and VPN/proxy/hosting detection flags.",
       "representativeQueries": [
-        "Inspect public IP, ASN, ISP, and reverse DNS hostname",
-        "Check forwarding headers and VPN/proxy detection flags"
+        "What is my IP address, city, country, ISP, and ASN?",
+        "Inspect reverse DNS PTR hostname and forwarding headers",
+        "Check if an IP address is flagged as VPN, proxy, or datacenter hosting"
       ],
       "tags": [
         "network-info",
-        "ip-lookup",
+        "what-is-my-ip",
+        "ip-geolocation",
+        "isp-lookup",
         "asn",
         "ptr-dns",
+        "vpn-check",
         "json-api"
+      ]
+    },
+    {
+      "identifier": "urn:air:testline.net:media:security-network-news",
+      "displayName": "TestLine Live Cybersecurity & Network News RSS API",
+      "type": "application/json",
+      "url": "https://testline.net/api/news",
+      "description": "Aggregated real-time cybersecurity, networking, DNS, BGP, and technology headlines from Bleeping Computer, The Hacker News, Cloudflare Blog, TechCrunch, Krebs on Security, and Ars Technica. Interactive reader available at https://testline.net/news.",
+      "representativeQueries": [
+        "Get latest cybersecurity and network infrastructure news",
+        "Fetch Bleeping Computer, The Hacker News, and Cloudflare Blog RSS headlines"
+      ],
+      "tags": [
+        "cybersecurity-news",
+        "rss-api",
+        "bleeping-computer",
+        "the-hacker-news",
+        "cloudflare-blog",
+        "techcrunch"
+      ]
+    },
+    {
+      "identifier": "urn:air:testline.net:docs:speed-ip-blog",
+      "displayName": "TestLine Speed, IP, Scam & VPN Knowledge Base",
+      "type": "text/html",
+      "url": "https://testline.net/blog",
+      "description": "10 practical technical guides covering internet download/upload speed, ping vs jitter, IPv4 vs IPv6 and CGNAT, IP scams and spoofing, IP geolocation accuracy, and VPN IP detection.",
+      "representativeQueries": [
+        "Why does real-world download speed differ from ISP plan?",
+        "How do IP geolocation, IP scams, and VPN IP detection work?"
+      ],
+      "tags": [
+        "internet-speed-guides",
+        "ipv4-ipv6",
+        "ip-scams",
+        "ip-location-accuracy",
+        "vpn-ip-status"
+      ]
+    },
+    {
+      "identifier": "urn:air:testline.net:agentic:capabilities",
+      "displayName": "TestLine Agentic Capabilities & Tool Manifest",
+      "type": "application/json",
+      "url": "https://testline.net/api/capabilities",
+      "description": "Machine-readable agentic browsing manifest detailing live speed probe endpoints, IP diagnostic JSON endpoints, news RSS API, routes, and privacy constraints.",
+      "representativeQueries": [
+        "List TestLine API endpoints and browser capabilities for agentic browsing"
+      ],
+      "tags": [
+        "agentic-browsing",
+        "capabilities",
+        "api-manifest",
+        "aeo",
+        "geo"
       ]
     },
     {
@@ -51,7 +115,8 @@
       ],
       "tags": [
         "llms-txt",
-        "documentation",
+        "geo",
+        "aeo",
         "methodology",
         "privacy"
       ]

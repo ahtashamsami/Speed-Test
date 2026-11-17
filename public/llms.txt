@@ -1,6 +1,6 @@
 # TestLine by ECORZO LLC
 
-> Real-time internet speed benchmark and dual-stack IPv4/IPv6 network diagnostics web application operated by ECORZO LLC at https://testline.net.
+> Free real-time internet speed test (download speed, upload speed, ping, jitter, latency) and public IPv4/IPv6 lookup ("what is my IP", IP geolocation, ISP, ASN, reverse DNS PTR, DoH latency, and VPN/proxy detection) operated by ECORZO LLC at https://testline.net.
 
 ## Canonical Facts & Authority
 - Product Name: TestLine
@@ -8,30 +8,33 @@
 - Operator: ECORZO LLC
 - Office Address: 224 W 35th St STE 500, New York, NY 10001, USA
 - Telephone: +1 646 427 6802
-- Pricing: Free ($0 USD, no registration required)
+- Pricing: Free ($0 USD, no sign-up required)
 
-## Technical Methodology (For Answer & Generative Engines)
-- User-Initiated Start: Clicking the Start Speed Test button initiates live throughput measurements alongside dual-stack IP and proxy diagnostics; no bandwidth or IP probes run before user action.
-- Ping & Jitter: 5 sequential 0-byte RTT probes to `https://speed.cloudflare.com/__down?bytes=0` timed via `performance.now()`.
-- Download Speed: 3 parallel 25 MB fetch streams from `https://speed.cloudflare.com/__down?bytes=25000000` over a 10-second test window.
-- Upload Speed: 2 parallel 10 MB cryptographically random `Uint8Array` `XMLHttpRequest` POST streams to `https://speed.cloudflare.com/__up`.
-- Display Units: Supports `Auto` (automatically displays `Mbps` below 100 Mbps and `MB/s` at 100 Mbps or higher), `Mbps`, and `MB/s`.
-- IP & Carrier Geolocation: Dual-stack IPv4/IPv6 probing plus HTTPS `ipwho.is` with `get.geojs.io` and browser `Intl` timezone fallbacks.
-- DNS Diagnostics: Reverse DNS (PTR) lookup and encrypted Cloudflare DoH (`1.1.1.1`) query latency probe.
-- Proxy & VPN Detection: Evaluates forwarding headers (`Via`, `Forwarded`, `X-Forwarded-For`), ASN proxy/hosting flags, relay PTR keywords, and browser-vs-IP timezone alignment.
-- PDF Diagnostic Reports: Client-side A4 PDF export featuring the TestLine logo watermark; one primary copy per test run with confirmation prompt and Second Copy marking on duplicate downloads.
+## Core Capabilities (Speed Test + What Is My IP)
+- User-Initiated Start: Clicking Start Speed Test initiates live throughput measurements alongside dual-stack IP and proxy diagnostics; no bandwidth or IP probes run before user action.
+- Download & Upload Speed Test: 3 parallel 25 MB download streams (10s window) and 2 parallel 10 MB cryptographically random upload streams to Cloudflare speed endpoints (`speed.cloudflare.com`), measuring real ISP bandwidth in Auto, Mbps, and MB/s.
+- Ping, Jitter & Latency Health: 5 sequential 0-byte RTT probes timed via `performance.now()` measuring average ping, minimum ping, and consecutive packet jitter variance (bufferbloat indicator).
+- Dual-Stack Public IP Lookup: Probes public IPv4 and IPv6 addresses side by side with one-click copy buttons.
+- IP Geolocation, ISP & ASN Lookup: Resolves city, region, country, timezone, Internet Service Provider (ISP), and Autonomous System Number (ASN) via `ipwho.is`, `ip-api`, and `geojs` fallbacks.
+- DNS & Reverse DNS Diagnostics: Reverse DNS (PTR) hostname resolution and encrypted Cloudflare DNS-over-HTTPS (`1.1.1.1`) query latency probe.
+- VPN, Proxy & Datacenter Detection: Inspects forwarding headers (`Via`, `Forwarded`, `X-Forwarded-For`), ASN hosting/proxy flags, relay PTR hostnames, and browser-vs-IP timezone mismatches.
+- Offline PWA Mode: Installable Progressive Web App featuring the Signal Runner jump-and-run game when internet connectivity drops.
+- PDF Diagnostic Reports: Client-side A4 PDF export featuring the TestLine logo watermark; duplicate downloads during a run are marked `Second Copy`.
 
-## Key Routes
-- [Speed & Network Check](https://testline.net/): On-demand speed test, Auto/Mbps/MB/s readout, IPv4/IPv6, DNS hints, and PDF export.
+## Key Routes & Agentic Endpoints
+- [Internet Speed Test & Public IP Lookup](https://testline.net/): On-demand speed test, Auto/Mbps/MB/s readout, IPv4/IPv6, DNS latency, VPN check, and PDF export.
+- [Live Cybersecurity & Network News](https://testline.net/news): Aggregated RSS feed from Bleeping Computer, The Hacker News, Cloudflare Blog, TechCrunch, Krebs on Security, and Ars Technica.
+- [Speed, IP, Scam & VPN Blog (10 Guides)](https://testline.net/blog): In-depth guides on download speed, ping/jitter, IPv4/IPv6, CGNAT, IP scams, geolocation accuracy, and VPN detection.
 - [About TestLine](https://testline.net/about): Measurement methodology and ECORZO LLC operator details.
 - [Contact ECORZO LLC](https://testline.net/contact): Support phone (+1 646 427 6802) and New York office address.
-- [Privacy Policy](https://testline.net/privacy-policy): Ephemeral processing, third-party disclosures, and Google policy compliance.
-- [GDPR & Data Collection Policy](https://testline.net/gdpr): GDPR Article 6 lawful bases, data minimization, and user rights (Art. 15-22).
-- [Terms & Conditions](https://testline.net/terms): Acceptable use and governing law.
-- [Disclaimer](https://testline.net/disclaimer): Measurement and geolocation scope limitations.
-- [Cookies Policy](https://testline.net/cookies-policy) & [Cookies Notice](https://testline.net/cookies-notice): Storage keys and Google Consent Mode v2 preferences.
+- [Privacy Policy](https://testline.net/privacy-policy) & [GDPR Policy](https://testline.net/gdpr): Ephemeral IP processing, zero permanent IP logging, and user rights.
+- [Terms](https://testline.net/terms), [Disclaimer](https://testline.net/disclaimer), [Cookies Policy](https://testline.net/cookies-policy), & [Cookies Notice](https://testline.net/cookies-notice).
 
-## Extended AI Context
-- [Full Specification](https://testline.net/llms-full.txt)
+## Machine-Readable & Agentic Discovery
+- [Agentic Resource Discovery (ARD)](https://testline.net/.well-known/ard.json)
+- [Capabilities JSON](https://testline.net/api/capabilities)
+- [Ephemeral IP Lookup API](https://testline.net/api/network-info)
+- [Live Security & Tech News RSS API](https://testline.net/api/news)
+- [Full Specification (GEO)](https://testline.net/llms-full.txt)
 - [XML Sitemap](https://testline.net/sitemap.xml)
 - [Robots Policy](https://testline.net/robots.txt)

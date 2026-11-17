@@ -128,48 +128,66 @@ export function LegalAndInfoPages({
     return (
       <PageShell
         title="About TestLine"
-        subtitle="Built by ECORZO LLC to provide transparent, real-time internet throughput and IP diagnostics in a single clean interface."
+        subtitle="Built by ECORZO LLC to deliver transparent internet speed testing and public IPv4/IPv6 diagnostics in one fast, privacy-respecting web app."
         lastUpdated="November 15, 2026"
         onBackHome={onBackHome}
       >
         <SectionHeading>What TestLine Measures</SectionHeading>
         <p>
-          TestLine is a browser-based network diagnostic utility operated by{' '}
+          TestLine is a free, ad-light browser internet speed test and &ldquo;what is my IP&rdquo;
+          diagnostic tool operated by{' '}
           <strong className="text-slate-900 dark:text-slate-100">ECORZO LLC</strong>.
-          When you open TestLine, the application conducts live network measurements directly
-          between your browser and high-availability edge endpoints without requiring browser
-          plugins or desktop software installations.
+          When you click <strong className="text-slate-900 dark:text-slate-100">Start Speed Test</strong>,
+          the application runs live throughput, latency, IP geolocation, and VPN detection checks
+          directly between your browser and global edge endpoints without plugins or sign-ups.
         </p>
 
         <ul className="list-disc list-inside space-y-2">
           <li>
-            <strong className="text-slate-900 dark:text-slate-100">Latency &amp; Jitter:</strong>{' '}
-            Measures round-trip time (RTT) across sequential uncached probes to report average ping,
-            minimum ping, and packet-to-packet jitter variance.
+            <strong className="text-slate-900 dark:text-slate-100">Download &amp; Upload Speed (Mbps / MB/s):</strong>{' '}
+            Executes parallel HTTP streams against Cloudflare&apos;s public speed edge to measure
+            real-world ISP download and upload capacity in Auto, Mbps, or MB/s units.
           </li>
           <li>
-            <strong className="text-slate-900 dark:text-slate-100">Download &amp; Upload Throughput:</strong>{' '}
-            Executes concurrent byte streams against Cloudflare&apos;s public speed edge to measure
-            real-world downstream and upstream capacity in Mbps or MB/s.
+            <strong className="text-slate-900 dark:text-slate-100">Ping, Jitter &amp; Latency Health:</strong>{' '}
+            Measures sequential uncached round-trip time (RTT) probes to report average ping,
+            minimum ping, and packet-to-packet jitter variance affecting calls and gaming.
           </li>
           <li>
-            <strong className="text-slate-900 dark:text-slate-100">Dual-Stack IP &amp; DNS Inspection:</strong>{' '}
-            Resolves your public IPv4 and IPv6 addresses, ISP/ASN routing information, reverse DNS
-            (PTR) record, and DNS-over-HTTPS (DoH) resolver latency.
+            <strong className="text-slate-900 dark:text-slate-100">What Is My IPv4/IPv6, Location, ISP &amp; ASN:</strong>{' '}
+            Resolves your public IPv4 and IPv6 addresses side by side, city/country IP geolocation,
+            Internet Service Provider (ISP), Autonomous System Number (ASN), reverse DNS (PTR)
+            hostname, and encrypted Cloudflare DoH DNS latency.
           </li>
           <li>
-            <strong className="text-slate-900 dark:text-slate-100">Proxy &amp; VPN Signals:</strong>{' '}
-            Evaluates forwarding headers, hosting/datacenter ASN flags, and timezone alignment to
-            surface active VPN, proxy, or relay routing in a dedicated diagnostic notice.
+            <strong className="text-slate-900 dark:text-slate-100">VPN, Proxy &amp; Datacenter Detection:</strong>{' '}
+            Evaluates forwarding headers, hosting/datacenter ASN flags, relay PTR patterns, and
+            timezone alignment to surface active VPN, proxy, or relay routing.
           </li>
         </ul>
 
-        <SectionHeading>Company Information</SectionHeading>
+        <SectionHeading>Knowledge Base, Live News &amp; Company Details</SectionHeading>
         <p>
-          TestLine is developed and maintained by{' '}
+          Explore our{' '}
+          <button
+            type="button"
+            onClick={() => onNavigate('blog')}
+            className="text-sky-700 dark:text-sky-400 hover:underline font-medium cursor-pointer"
+          >
+            10 Speed, IP, Scam &amp; VPN Guides
+          </button>{' '}
+          or read real-time cybersecurity and network headlines in the{' '}
+          <button
+            type="button"
+            onClick={() => onNavigate('news')}
+            className="text-sky-700 dark:text-sky-400 hover:underline font-medium cursor-pointer"
+          >
+            TestLine News RSS Feed
+          </button>
+          . TestLine is developed and maintained by{' '}
           <strong className="text-slate-900 dark:text-slate-100">ECORZO LLC</strong>, headquartered
-          at 224 W 35th St STE 500, New York, NY 10001, United States. For support, compliance
-          inquiries, or enterprise feedback, please visit our{' '}
+          at 224 W 35th St STE 500, New York, NY 10001, United States. For support or compliance
+          inquiries, visit our{' '}
           <button
             type="button"
             onClick={() => onNavigate('contact')}

@@ -35,10 +35,14 @@
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TestLine — Internet Speed Test &amp; IP Diagnostics</title>
+    <title>TestLine — Internet Speed Test &amp; Public IP Lookup</title>
     <meta
       name="description"
-      content="Test live internet download, upload, ping, and jitter with TestLine by ECORZO LLC. Check public IPv4/IPv6, ISP, ASN, DNS latency, and VPN or proxy status."
+      content="Test your internet download &amp; upload speed, ping, and jitter, and check what is my IP address (IPv4/IPv6), ISP location, DNS latency, and VPN status."
+    />
+    <meta
+      name="keywords"
+      content="internet speed test, what is my ip, what is my ip address, public ip address, check my ip, download speed, upload speed, ping test, latency, jitter, bufferbloat, isp speed, mbps test, ipv4, ipv6, ip location, ip geolocation, isp lookup, asn lookup, reverse dns, ptr lookup, dns lookup, vpn detection, proxy check"
     />
     <meta
       name="robots"
@@ -56,22 +60,23 @@
     <link rel="canonical" href="https://testline.net/" />
     <link rel="sitemap" type="application/xml" title="Sitemap" href="https://testline.net/sitemap.xml" />
     <link rel="alternate" type="text/plain" title="LLMs Context" href="https://testline.net/llms.txt" />
+    <link rel="alternate" type="text/plain" title="Full LLMs Technical Specification" href="https://testline.net/llms-full.txt" />
     <meta property="og:site_name" content="TestLine" />
     <meta property="og:locale" content="en_US" />
     <meta property="og:url" content="https://testline.net/" />
-    <meta property="og:title" content="TestLine — Internet Speed Test & IP Diagnostics" />
+    <meta property="og:title" content="TestLine — Internet Speed Test & Public IP Lookup" />
     <meta
       property="og:description"
-      content="Test live internet download, upload, ping, and jitter with TestLine by ECORZO LLC. Check public IPv4/IPv6, ISP, ASN, DNS latency, and VPN or proxy status."
+      content="Test your internet download & upload speed, ping, and jitter, and check what is my IP address (IPv4/IPv6), ISP location, DNS latency, and VPN status."
     />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://testline.net/assets/aistudio/test_logo_header_dark.png" />
-    <meta property="og:image:alt" content="TestLine by ECORZO LLC — Internet Speed Test & IP Diagnostics" />
+    <meta property="og:image:alt" content="TestLine by ECORZO LLC — Internet Speed Test & Public IP Lookup" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="TestLine — Internet Speed Test & IP Diagnostics" />
+    <meta name="twitter:title" content="TestLine — Internet Speed Test & Public IP Lookup" />
     <meta
       name="twitter:description"
-      content="Real-time internet speed benchmark, dual-stack IPv4/IPv6 lookup, DNS latency, and VPN/proxy detection by ECORZO LLC."
+      content="Measure internet download/upload speed, ping, and jitter, and check your public IPv4/IPv6 IP address, geolocation, ISP/ASN, DNS latency, and VPN status."
     />
     <meta name="twitter:image" content="https://testline.net/assets/aistudio/test_logo_header_dark.png" />
     <script type="application/ld+json">
@@ -79,23 +84,37 @@
         "@context": "https://schema.org",
         "@graph": [
           {
+            "@type": "WebSite",
+            "@id": "https://testline.net/#website",
+            "name": "TestLine",
+            "alternateName": ["TestLine Internet Speed Test", "TestLine What Is My IP Lookup"],
+            "url": "https://testline.net/",
+            "inLanguage": "en-US",
+            "publisher": {
+              "@id": "#ecorzo-organization"
+            }
+          },
+          {
             "@type": "WebApplication",
             "name": "TestLine",
+            "alternateName": "TestLine Speed Test & IP Lookup",
             "url": "https://testline.net/",
             "image": "https://testline.net/assets/aistudio/test_logo_header_dark.png",
             "applicationCategory": "UtilitiesApplication",
             "operatingSystem": "All",
             "browserRequirements": "Requires JavaScript",
-            "description": "Real-time internet speed benchmark (download, upload, ping, jitter) and full IPv4/IPv6, reverse DNS, DoH latency, and proxy/VPN diagnostics.",
+            "keywords": "internet speed test, what is my ip, ip address lookup, ipv4, ipv6, ip location, isp lookup, asn lookup, download speed, upload speed, ping test, jitter, bufferbloat, reverse dns, doh latency, vpn detection, proxy check",
+            "description": "Free internet speed test and public IP address lookup tool. Measure download speed, upload speed, ping, jitter, and latency, and inspect IPv4/IPv6, IP geolocation, ISP, ASN, reverse DNS (PTR), DoH latency, and VPN or proxy status.",
             "featureList": [
-              "Live Download Speed Test (Auto, Mbps, and MB/s)",
-              "Live Upload Speed Test",
-              "Ping Latency and Jitter Variance Measurement",
-              "Dual-Stack IPv4 and IPv6 Address Lookup",
-              "ISP, Carrier, and Autonomous System (ASN) Identification",
-              "Reverse DNS (PTR) and Cloudflare DoH Latency Probe",
+              "Live Internet Download Speed Test (Auto, Mbps, and MB/s)",
+              "Live Internet Upload Speed Test",
+              "Ping Latency, Jitter Variance, and Loaded Latency / Bufferbloat Diagnostics",
+              "What Is My IP — Dual-Stack IPv4 and IPv6 Address Lookup",
+              "IP Geolocation (City, Region, Country), ISP, and ASN Identification",
+              "Reverse DNS (PTR) Lookup and Cloudflare 1.1.1.1 DoH DNS Latency Check",
               "VPN, Proxy, and Datacenter Relay Detection",
-              "Downloadable Branded PDF Diagnostic Report with Second-Copy Controls"
+              "Branded PDF Speed & IP Diagnostic Report Export",
+              "Offline PWA Support with Signal Runner Jump-and-Run Game"
             ],
             "publisher": {
               "@id": "#ecorzo-organization"
@@ -128,75 +147,91 @@
             "mainEntity": [
               {
                 "@type": "Question",
-                "name": "How does TestLine measure internet download and upload speed?",
+                "name": "How fast is my internet download and upload speed?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "When you click Start Speed Test, TestLine runs real-time browser-to-edge transfers against Cloudflare public speed endpoints. Download speed uses 3 parallel 25 MB fetch streams over a 10-second window, while upload speed measures 2 parallel 10 MB binary POST streams using XMLHttpRequest upload progress events."
+                  "text": "Click the Start Speed Test play button to measure your real-time ISP download speed and upload speed in Mbps or MB/s. TestLine runs 3 parallel 25 MB download streams over 10 seconds and 2 parallel 10 MB upload streams against Cloudflare edge servers to verify real streaming, gaming, and file transfer speeds."
                 }
               },
               {
                 "@type": "Question",
-                "name": "What are good ping and jitter values for video calls and gaming?",
+                "name": "What is my public IPv4 and IPv6 address?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "For smooth video conferencing and online gaming, an average ping under 30 ms and jitter below 10 ms are considered optimal. Ping between 30 ms and 75 ms remains responsive for general browsing, while jitter above 25 ms can cause voice stutter or packet delay."
+                  "text": "When you start a test on TestLine, dual-stack network probing detects both your public IPv4 address and IPv6 address side by side with one-click copy buttons, along with your IP geolocation (city, region, country), Internet Service Provider (ISP), and Autonomous System Number (ASN)."
                 }
               },
               {
                 "@type": "Question",
-                "name": "How do I check my public IPv4 and IPv6 address?",
+                "name": "What are good ping, jitter, and unloaded vs. loaded latency (bufferbloat) scores?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Click the Start Speed Test play button to launch both your live speed test and full IP lookup. TestLine probes dual-stack client endpoints and edge headers to reveal your public IPv4 and IPv6 addresses side by side with one-click copy buttons."
+                  "text": "Unloaded ping under 30 ms and jitter below 10 ms deliver smooth video calls and online gaming. When latency spikes sharply during heavy downloads or uploads (loaded latency), that difference indicates bufferbloat, which causes voice stutter and lag even on high-Mbps fiber plans."
                 }
               },
               {
                 "@type": "Question",
-                "name": "How does TestLine detect a VPN, proxy, or datacenter relay?",
+                "name": "How accurate is IP geolocation for checking my IP location?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "TestLine evaluates proxy forwarding headers, hosting and datacenter Autonomous System Numbers (ASNs), known relay PTR hostnames, and browser-versus-IP timezone mismatches. When any signal triggers, a dedicated Proxy & VPN Detection card lists every matched indicator."
+                  "text": "IP location lookup maps your public IP block to its registered country, region, and city using ISP and regional registry records. City-level IP geolocation is generally accurate for routing and regional diagnostics, though it never reveals your exact street address."
                 }
               },
               {
                 "@type": "Question",
-                "name": "What is DNS-over-HTTPS (DoH) latency and Reverse DNS (PTR)?",
+                "name": "How does TestLine detect a VPN, proxy, or datacenter IP?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "DNS-over-HTTPS (DoH) latency measures how quickly your connection resolves domain queries over encrypted HTTPS via Cloudflare 1.1.1.1. Reverse DNS (PTR) reveals the canonical hostname mapped back to your public IP address by your internet carrier."
+                  "text": "TestLine checks HTTP forwarding headers, hosting and datacenter ASNs, relay reverse DNS (PTR) hostnames, and browser-versus-IP timezone mismatches. When any VPN, proxy, or relay indicator matches, the Proxy & VPN Detection card highlights every triggered signal."
                 }
               },
               {
                 "@type": "Question",
-                "name": "Does ECORZO LLC store my IP address or speed test data?",
+                "name": "What is DNS-over-HTTPS (DoH) latency and Reverse DNS (PTR) lookup?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "No. IP lookups and speed tests run only when you start a test, are processed ephemerally in memory, and are never sold or stored in permanent user profiles. Recent run history is saved strictly inside your own browser storage, and exported PDF reports are generated locally on your device."
+                  "text": "DNS-over-HTTPS (DoH) latency measures how quickly your network resolves domain names over encrypted HTTPS via Cloudflare 1.1.1.1, while Reverse DNS (PTR) lookup displays the canonical carrier or server hostname assigned to your public IP address."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does ECORZO LLC log or store my IP address or speed test results?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. Speed tests and IP lookups run only when you start a test, are processed ephemerally in memory, and are never sold or stored in permanent user profiles. Recent test history stays strictly in your own browser storage, and PDF diagnostic reports are generated locally on your device."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can I use TestLine as a mobile app or play offline if my internet drops?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. TestLine is an installable Progressive Web App (PWA) for Android, iOS, and desktop. Whenever your device loses internet connectivity, TestLine automatically launches the Signal Runner jump-and-run game so you can play until your connection comes back online."
                 }
               }
             ]
           },
           {
             "@type": "HowTo",
-            "name": "How to test your internet speed and check your IP address with TestLine",
+            "name": "How to run an internet speed test and check what your IP address is",
             "step": [
               {
                 "@type": "HowToStep",
                 "position": 1,
                 "name": "Click Start Speed Test",
-                "text": "Press the triangular Start Speed Test play button to initiate live ping, jitter, download, upload, and dual-stack IP diagnostics."
+                "text": "Press the Start Speed Test play button to measure live download speed, upload speed, ping, jitter, and dual-stack IPv4/IPv6 diagnostics."
               },
               {
                 "@type": "HowToStep",
                 "position": 2,
-                "name": "Review Speed & IP Diagnostics",
-                "text": "Inspect download, upload, average ping, jitter, public IPv4/IPv6 addresses, ISP/ASN, DNS DoH latency, and any detected proxy or VPN signals."
+                "name": "Inspect Speed, IP Location, ISP, DNS & VPN Status",
+                "text": "Review your Mbps or MB/s throughput, public IPv4/IPv6 addresses, city/country IP location, ISP, ASN, reverse DNS PTR, DoH latency, and VPN or proxy detection results."
               },
               {
                 "@type": "HowToStep",
                 "position": 3,
-                "name": "Export PDF Report",
-                "text": "Click Export PDF after initiating a test to download a watermarked summary of your speed benchmark and network diagnostics directly on your device."
+                "name": "Export PDF Diagnostic Report",
+                "text": "Click Export PDF to save a branded summary of your internet speed test and IP lookup diagnostics directly on your device."
               }
             ]
           }

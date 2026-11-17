@@ -18,6 +18,8 @@ export const Footer = memo(function Footer({ activePage, onNavigate }: FooterPro
 
   const companyLinks: Array<{ id: AppPage; label: string }> = [
     { id: 'home', label: 'Speed Test' },
+    { id: 'news', label: 'News' },
+    { id: 'blog', label: 'Blog' },
     { id: 'about', label: 'About' },
     { id: 'contact', label: 'Contact' },
   ];
