@@ -80,7 +80,7 @@ export const FastSpeedStage = memo(function FastSpeedStage({
   const isIdle = metrics.phase === 'idle';
 
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] px-6 py-10 sm:px-10 sm:py-12">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] px-4 py-8 sm:px-10 sm:py-12">
       <div className="max-w-3xl mx-auto text-center">
         {isIdle ? (
           <div className="py-6 sm:py-9 flex flex-col items-center justify-center">
@@ -156,9 +156,9 @@ export const FastSpeedStage = memo(function FastSpeedStage({
             </p>
 
             {/* Fast.com-style Giant Centered Hero Readout */}
-            <div className="mt-4 flex items-center justify-center gap-4 sm:gap-6">
+            <div className="mt-4 flex items-center justify-center gap-3 sm:gap-6">
               <span
-                className={`font-mono text-6xl sm:text-8xl lg:text-[6.75rem] font-bold leading-none tracking-tight transition-colors ${
+                className={`font-mono text-5xl sm:text-8xl lg:text-[6.75rem] font-bold leading-none tracking-tight transition-colors ${
                   isHeroMuted
                     ? 'text-slate-300 dark:text-slate-700'
                     : metrics.phase === 'download'

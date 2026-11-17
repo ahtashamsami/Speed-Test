@@ -373,7 +373,7 @@ export default function App() {
     metrics.phase === 'ping' || metrics.phase === 'download' || metrics.phase === 'upload';
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 dark:bg-[#070B12] dark:text-slate-100">
+    <div className="min-h-screen flex flex-col overflow-x-clip bg-slate-50 text-slate-900 dark:bg-[#070B12] dark:text-slate-100">
       <TopBar
         isRunning={isRunning}
         activePage={activePage}
@@ -394,19 +394,19 @@ export default function App() {
                   Internet Speed Test &amp; IP Diagnostics
                 </h1>
 
-                <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 shrink-0">
+                <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end gap-2 sm:gap-3 min-w-0">
                   {/* Unit Toggle */}
                   <div
                     role="group"
                     aria-label="Speed unit"
-                    className="inline-flex items-center gap-1 p-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A]"
+                    className="inline-flex items-center gap-0.5 sm:gap-1 p-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] min-w-0"
                   >
                     <button
                       type="button"
                       onClick={setUnitAuto}
                       aria-pressed={unit === 'Auto'}
                       title="Automatically uses Mbps below 100 Mbps and MB/s at 100 Mbps or higher"
-                      className={`min-h-[38px] px-3 py-1.5 text-xs font-mono font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                      className={`min-h-[40px] sm:min-h-[38px] px-2.5 sm:px-3 py-1.5 text-xs font-mono font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                         unit === 'Auto'
                           ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
@@ -418,7 +418,7 @@ export default function App() {
                       type="button"
                       onClick={setUnitMbps}
                       aria-pressed={unit === 'Mbps'}
-                      className={`min-h-[38px] px-3 py-1.5 text-xs font-mono font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                      className={`min-h-[40px] sm:min-h-[38px] px-2.5 sm:px-3 py-1.5 text-xs font-mono font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                         unit === 'Mbps'
                           ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
@@ -430,7 +430,7 @@ export default function App() {
                       type="button"
                       onClick={setUnitMBs}
                       aria-pressed={unit === 'MB/s'}
-                      className={`min-h-[38px] px-3 py-1.5 text-xs font-mono font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                      className={`min-h-[40px] sm:min-h-[38px] px-2.5 sm:px-3 py-1.5 text-xs font-mono font-medium rounded-md transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                         unit === 'MB/s'
                           ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
@@ -440,41 +440,46 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* Single-Click Light / Dark Mode Toggle */}
-                  <button
-                    type="button"
-                    onClick={toggleTheme}
-                    aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                    className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-                  >
-                    {theme === 'dark' ? (
-                      <>
-                        <Sun className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
-                        <span>Light Mode</span>
-                      </>
-                    ) : (
-                      <>
-                        <Moon className="w-3.5 h-3.5 text-slate-600" aria-hidden="true" />
-                        <span>Dark Mode</span>
-                      </>
-                    )}
-                  </button>
+                  {/* Theme & PDF Actions: icon-only on mobile (<sm), full labeled buttons on sm+ */}
+                  <div className="flex items-center gap-1 sm:gap-3 shrink-0">
+                    <button
+                      type="button"
+                      onClick={toggleTheme}
+                      aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                      title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                      className="inline-flex items-center justify-center gap-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-[40px] p-2 sm:px-3.5 sm:py-2 text-xs font-medium rounded-lg border-0 bg-transparent sm:border sm:border-slate-200 sm:dark:border-slate-800 sm:bg-white sm:dark:bg-[#0F172A] text-slate-700 dark:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                    >
+                      {theme === 'dark' ? (
+                        <>
+                          <Sun className="w-5 h-5 sm:w-3.5 sm:h-3.5 text-amber-400" aria-hidden="true" />
+                          <span className="hidden sm:inline">Light Mode</span>
+                        </>
+                      ) : (
+                        <>
+                          <Moon className="w-5 h-5 sm:w-3.5 sm:h-3.5 text-slate-700" aria-hidden="true" />
+                          <span className="hidden sm:inline">Dark Mode</span>
+                        </>
+                      )}
+                    </button>
 
-                  {/* On-demand Branded PDF Report Export */}
-                  <button
-                    type="button"
-                    onClick={handleExportPdf}
-                    disabled={!isTestInitiated || exportingPdf}
-                    title={
-                      !isTestInitiated
-                        ? 'Start a speed test first to export a PDF report'
-                        : 'Export speed & network diagnostics PDF report'
-                    }
-                    className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-[#0F172A] transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-                  >
-                    <FileDown className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" aria-hidden="true" />
-                    <span>{exportingPdf ? 'Exporting...' : 'Export PDF'}</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={handleExportPdf}
+                      disabled={!isTestInitiated || exportingPdf}
+                      aria-label={exportingPdf ? 'Exporting PDF' : 'Export PDF'}
+                      title={
+                        !isTestInitiated
+                          ? 'Start a speed test first to export a PDF report'
+                          : 'Export speed & network diagnostics PDF report'
+                      }
+                      className="inline-flex items-center justify-center gap-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-[40px] p-2 sm:px-3.5 sm:py-2 text-xs font-medium rounded-lg border-0 bg-transparent sm:border sm:border-slate-200 sm:dark:border-slate-800 sm:bg-white sm:dark:bg-[#0F172A] text-slate-700 dark:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:bg-transparent sm:disabled:hover:bg-white sm:dark:disabled:hover:bg-[#0F172A] transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                    >
+                      <FileDown className="w-5 h-5 sm:w-3.5 sm:h-3.5 text-sky-600 dark:text-sky-400" aria-hidden="true" />
+                      <span className="hidden sm:inline">
+                        {exportingPdf ? 'Exporting...' : 'Export PDF'}
+                      </span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -535,7 +540,10 @@ export default function App() {
 
       <Footer activePage={activePage} onNavigate={navigateTo} />
 
-      <ConsentBanner onOpenPreferences={() => navigateTo('cookies-notice')} />
+      <ConsentBanner
+        onOpenPreferences={() => navigateTo('cookies-notice')}
+        suppressed={activePage === 'cookies-notice' || activePage === 'cookies-policy'}
+      />
 
       {showDuplicatePdfModal && (
         <div

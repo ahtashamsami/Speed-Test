@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import dns from 'node:dns/promises';
 import fs from 'node:fs/promises';
+import http from 'node:http';
 import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,7 +10,35 @@ import express, { type Request, type Response } from 'express';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PORT = Number(process.env.PORT) || 3000;
+function resolveListenOptions(): { port: number; host: string } {
+  const args = process.argv.slice(2);
+  let cliPort: number | null = null;
+  let cliHost: string | null = null;
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--port' && args[i + 1]) {
+      const parsed = Number(args[i + 1]);
+      if (Number.isFinite(parsed) && parsed > 0) cliPort = parsed;
+      i++;
+    } else if (arg.startsWith('--port=')) {
+      const parsed = Number(arg.slice('--port='.length));
+      if (Number.isFinite(parsed) && parsed > 0) cliPort = parsed;
+    } else if (arg === '--host' && args[i + 1]) {
+      cliHost = args[i + 1];
+      i++;
+    } else if (arg.startsWith('--host=')) {
+      cliHost = arg.slice('--host='.length);
+    }
+  }
+
+  const envPort = Number(process.env.PORT);
+  const port = cliPort ?? (Number.isFinite(envPort) && envPort > 0 ? envPort : 3000);
+  const host = cliHost || process.env.HOST || '0.0.0.0';
+  return { port, host };
+}
+
+const { port: PORT, host: HOST } = resolveListenOptions();
 const CHUNK_SIZE = 1024 * 1024; // 1 MiB high-entropy uncompressible chunk
 const RANDOM_CHUNK = crypto.randomBytes(CHUNK_SIZE);
 
@@ -807,10 +836,15 @@ async function startServer() {
     });
   });
 
+  const httpServer = http.createServer(app);
+
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: process.env.DISABLE_HMR === 'true' ? false : { server: httpServer },
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
@@ -853,8 +887,8 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`TestLine server listening on http://0.0.0.0:${PORT}`);
+  httpServer.listen(PORT, HOST, () => {
+    console.log(`TestLine server listening on http://${HOST}:${PORT}`);
   });
 }
 
