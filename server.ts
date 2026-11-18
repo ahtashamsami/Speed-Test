@@ -1153,7 +1153,7 @@ async function startServer() {
   app.disable('x-powered-by');
   app.disable('etag');
 
-  // Enforce apex canonical host redirect (www.testline.net -> testline.net)
+  // Enforce apex canonical host and non-trailing-slash canonical URLs via permanent 301
   app.use((req: Request, res: Response, next) => {
     const rawHost = (req.headers['x-forwarded-host'] || req.headers.host || '')
       .toString()
@@ -1163,6 +1163,18 @@ async function startServer() {
       .replace(/:\d+$/, '');
     if (rawHost === 'www.testline.net') {
       res.redirect(301, `https://testline.net${req.originalUrl || '/'}`);
+      return;
+    }
+    if (
+      (req.method === 'GET' || req.method === 'HEAD') &&
+      req.path.length > 1 &&
+      req.path.endsWith('/') &&
+      !req.path.startsWith('/api/')
+    ) {
+      const cleanPath = req.path.replace(/\/+$/, '') || '/';
+      const queryIdx = req.originalUrl.indexOf('?');
+      const qs = queryIdx >= 0 ? req.originalUrl.slice(queryIdx) : '';
+      res.redirect(301, `${cleanPath}${qs}`);
       return;
     }
     next();
@@ -1737,7 +1749,7 @@ async function startServer() {
         return next();
       }
       const accept = req.headers.accept || '';
-      if (!accept.includes('text/html') && !accept.includes('*/*')) {
+      if (accept && !accept.includes('text/html') && !accept.includes('*/*')) {
         return next();
       }
 

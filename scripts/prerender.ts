@@ -113,10 +113,10 @@ export async function prerenderDistDirectory(
     if (routePath === '/') {
       await fs.writeFile(indexHtmlPath, html, 'utf-8');
     } else {
-      const cleanRel = routePath.replace(/^\/+/, '');
-      const targetDir = path.join(distDir, cleanRel);
-      await fs.mkdir(targetDir, { recursive: true });
-      await fs.writeFile(path.join(targetDir, 'index.html'), html, 'utf-8');
+      const cleanRel = routePath.replace(/^\/+|\/+$/g, '');
+      const targetHtmlPath = path.join(distDir, `${cleanRel}.html`);
+      await fs.mkdir(path.dirname(targetHtmlPath), { recursive: true });
+      await fs.writeFile(targetHtmlPath, html, 'utf-8');
     }
   }
 

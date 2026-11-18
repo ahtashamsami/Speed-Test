@@ -38,6 +38,12 @@ export async function onRequest(context) {
     return Response.redirect(redirectUrl.toString(), 301);
   }
 
+  if (url.pathname.length > 1 && url.pathname.endsWith('/')) {
+    const redirectUrl = new URL(context.request.url);
+    redirectUrl.pathname = url.pathname.replace(/\/+$/, '') || '/';
+    return Response.redirect(redirectUrl.toString(), 301);
+  }
+
   const normalizedPath = url.pathname.toLowerCase().replace(/\/+$/, '') || '/';
 
   if (normalizedPath === '/privacy') {
