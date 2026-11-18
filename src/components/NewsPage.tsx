@@ -321,6 +321,18 @@ export const NewsPage = memo(function NewsPage({
           })}
         </div>
       )}
+
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] p-5 sm:p-6 space-y-3">
+        <h2 className="font-display text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100">
+          {editorial.overviewTitle}
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+          <p>{editorial.commentaryByTopic.vpn}</p>
+          <p>{editorial.commentaryByTopic.routing}</p>
+          <p>{editorial.commentaryByTopic.scam}</p>
+          <p>{editorial.commentaryByTopic.speed}</p>
+        </div>
+      </div>
     </section>
   );
 });

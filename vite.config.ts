@@ -1,14 +1,40 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
-import {VitePWA} from 'vite-plugin-pwa';
+import { defineConfig, type Plugin } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
+import { prerenderDistDirectory } from './scripts/prerender';
+
+function testlinePrerenderPlugin(): Plugin {
+  let outDir = 'dist';
+  let rootDir = process.cwd();
+  return {
+    name: 'testline-prerender-routes',
+    apply: 'build',
+    configResolved(config) {
+      rootDir = config.root;
+      outDir = config.build.outDir;
+    },
+    writeBundle: {
+      order: 'post',
+      sequential: true,
+      async handler() {
+        const resolvedDist = path.resolve(rootDir, outDir);
+        const { routeCount, rssCount } = await prerenderDistDirectory(resolvedDist);
+        console.log(
+          `[testline-prerender] Pre-rendered ${routeCount} routes + 404.html into ${outDir}/ (${rssCount} live RSS stories embedded).`
+        );
+      },
+    },
+  };
+}
 
 export default defineConfig(() => {
   return {
     plugins: [
       react(),
       tailwindcss(),
+      testlinePrerenderPlugin(),
       VitePWA({
         registerType: 'autoUpdate',
         manifestFilename: 'manifest.webmanifest',
@@ -62,7 +88,7 @@ export default defineConfig(() => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-          navigateFallback: '/index.html',
+          navigateFallback: null,
           navigateFallbackDenylist: [
             /^\/api\//,
             /^\/\.well-known\//,
@@ -107,7 +133,6 @@ export default defineConfig(() => {
         devOptions: {
           enabled: process.env.DISABLE_HMR !== 'true',
           type: 'module',
-          navigateFallback: '/index.html',
         },
       }),
     ],
