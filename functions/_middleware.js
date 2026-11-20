@@ -46,17 +46,28 @@ export async function onRequest(context) {
 
   const normalizedPath = url.pathname.toLowerCase().replace(/\/+$/, '') || '/';
 
-  if (normalizedPath === '/privacy') {
+  if (normalizedPath === '/404' || normalizedPath === '/404.html') {
+    return renderNotFoundResponse(context, url);
+  }
+
+  if (normalizedPath === '/privacy' || normalizedPath === '/privacy.html') {
     const redirectUrl = new URL(context.request.url);
     redirectUrl.pathname = '/privacy-policy';
     return Response.redirect(redirectUrl.toString(), 301);
   }
 
+  const routePathForCheck =
+    normalizedPath === '/index.html'
+      ? '/'
+      : normalizedPath.endsWith('.html')
+      ? normalizedPath.slice(0, -'.html'.length) || '/'
+      : normalizedPath;
+
   const isAssetOrSystemPath =
     normalizedPath.startsWith('/assets/') ||
     normalizedPath.startsWith('/.well-known/') ||
     normalizedPath.startsWith('/cdn-cgi/') ||
-    /\.[a-z0-9]+$/i.test(normalizedPath);
+    (/\.[a-z0-9]+$/i.test(normalizedPath) && !normalizedPath.endsWith('.html'));
 
   if (isAssetOrSystemPath) {
     const response = await context.next();
@@ -70,10 +81,10 @@ export async function onRequest(context) {
     return response;
   }
 
-  const isKnownStaticRoute = STATIC_KNOWN_PATHS.has(normalizedPath);
+  const isKnownStaticRoute = STATIC_KNOWN_PATHS.has(routePathForCheck);
   let isKnownBlogArticle = false;
-  if (normalizedPath.startsWith('/blog/')) {
-    const slug = decodeURIComponent(normalizedPath.slice('/blog/'.length));
+  if (routePathForCheck.startsWith('/blog/')) {
+    const slug = decodeURIComponent(routePathForCheck.slice('/blog/'.length));
     isKnownBlogArticle =
       KNOWN_BLOG_SLUGS.has(slug) || (slug.startsWith('daily-hot-news-') && !slug.includes('/'));
   }

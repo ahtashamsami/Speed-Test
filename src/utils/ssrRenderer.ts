@@ -120,7 +120,7 @@ export function buildSsrRootMarkup(
   if (page === 'not-found') {
     const nf = EXTRA_UI_STRINGS.en.notFound;
     return buildSsrShell(
-      `<section><h1>${escapeHtml(nf.title)}</h1><p>${escapeHtml(nf.description)}</p><p><a href="/">${escapeHtml(nf.runSpeedTest)}</a> · <a href="/blog">${escapeHtml(nf.readBlogGuides)}</a></p></section>`
+      `<section><p><strong>${escapeHtml(nf.code)}</strong></p><h1>${escapeHtml(nf.title)}</h1><p>${escapeHtml(nf.description)}</p><p><a href="/">${escapeHtml(nf.backToHome)}</a> · <a href="/blog">${escapeHtml(nf.readBlogGuides)}</a> · <a href="/news">${escapeHtml(nf.readNews)}</a></p></section>`
     );
   }
 

@@ -14,6 +14,7 @@ import {
   resolveLangFromGeo,
 } from './src/i18n/localeDetection';
 import { enPack } from './src/i18n/packs/en';
+import { getUtcDateKey, pickAndMergeDailyBlogs } from './src/utils/dailyBlogGenerator';
 import { renderRouteHtmlSnapshot } from './src/utils/ssrRenderer';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -544,6 +545,7 @@ interface ParsedNewsItem {
   title: string;
   link: string;
   summary: string;
+  fullSummary?: string;
   author: string | null;
   publishedAt: string | null;
   publishedTs: number;
@@ -666,6 +668,7 @@ function parseFeedXml(xml: string, feed: RssFeedDefinition): ParsedNewsItem[] {
     const rawDesc =
       extractXmlTag(rawBlock, ['description', 'summary', 'content:encoded', 'content']) || '';
     const summary = cleanPlainText(rawDesc, 220);
+    const fullSummary = cleanPlainText(rawDesc, 460);
 
     const rawAuthor = extractXmlTag(rawBlock, ['dc:creator', 'author', 'name']);
     const author = rawAuthor ? cleanPlainText(rawAuthor, 60) || null : null;
@@ -682,6 +685,7 @@ function parseFeedXml(xml: string, feed: RssFeedDefinition): ParsedNewsItem[] {
       title,
       link,
       summary,
+      fullSummary,
       author,
       publishedAt,
       publishedTs,
@@ -722,7 +726,9 @@ async function fetchFeedViaRss2Json(feed: RssFeedDefinition): Promise<ParsedNews
       const title = cleanPlainText(raw.title || '', 180);
       const link = typeof raw.link === 'string' ? raw.link.trim() : '';
       if (!title || !/^https?:\/\//i.test(link)) continue;
-      const summary = cleanPlainText(raw.description || raw.content || '', 220);
+      const rawDesc = raw.description || raw.content || '';
+      const summary = cleanPlainText(rawDesc, 220);
+      const fullSummary = cleanPlainText(rawDesc, 460);
       const author = raw.author ? cleanPlainText(raw.author, 60) || null : null;
       const parsedTs = raw.pubDate ? Date.parse(raw.pubDate.replace(' ', 'T') + 'Z') : NaN;
       const fallbackTs = raw.pubDate ? Date.parse(raw.pubDate) : NaN;
@@ -739,6 +745,7 @@ async function fetchFeedViaRss2Json(feed: RssFeedDefinition): Promise<ParsedNews
         title,
         link,
         summary,
+        fullSummary,
         author,
         publishedAt: finalTs > 0 ? new Date(finalTs).toISOString() : null,
         publishedTs: finalTs,
@@ -886,172 +893,17 @@ async function fetchAggregatedNews(forceRefresh: boolean): Promise<NewsPayload> 
   }
 }
 
-interface DailyBlogSection {
-  heading: string;
-  paragraphs: string[];
-}
-
-interface DailyBlogPost {
-  id: string;
-  slug: string;
-  title: string;
-  category: 'Hot News';
-  publishedDate: string;
-  readTime: string;
-  author: string;
-  summary: string;
-  keyTakeaways: string[];
-  sections: DailyBlogSection[];
-  isDailyHotNews: true;
-  dailyDateKey: string;
-  sourceName: string;
-  sourceUrl: string;
-  topicTag: string;
-}
-
 const DAILY_BLOGS_CACHE_FILE = path.join(os.tmpdir(), 'testline-daily-hot-news-blogs.json');
-const HOT_NEWS_KEYWORDS = [
-  'zero-day',
-  'vulnerability',
-  'ransomware',
-  'breach',
-  'backdoor',
-  'exploit',
-  'malware',
-  'phishing',
-  'vpn',
-  'proxy',
-  'ip',
-  'ipv4',
-  'ipv6',
-  'dns',
-  'bgp',
-  'cloudflare',
-  'outage',
-  'botnet',
-  'router',
-  'patch',
-  'cve',
-  'leak',
-  'cyber',
-  'data',
-];
 
-let cachedDailyBlogs: DailyBlogPost[] | null = null;
+let cachedDailyBlogs: BlogPost[] | null = null;
 
-function getTodayDateKey(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function formatHumanDate(dateKey: string): string {
-  const parsed = Date.parse(`${dateKey}T12:00:00Z`);
-  if (!Number.isFinite(parsed)) return dateKey;
-  return new Date(parsed).toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
-}
-
-function slugifyTitle(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 72);
-}
-
-function inferHotNewsTopic(text: string): string {
-  const lower = text.toLowerCase();
-  if (/\b(vpn|proxy|tor|tunnel|wireguard|relay)\b/.test(lower)) return 'VPN IP Status';
-  if (/\b(phish|scam|fraud|spoof|ransom|breach|backdoor|malware|exploit)\b/.test(lower)) {
-    return 'IP Scams';
-  }
-  if (/\b(ipv4|ipv6|bgp|asn|dns|routing)\b/.test(lower)) return 'IP Addresses';
-  if (/\b(bandwidth|fiber|broadband|5g|latency|outage|speed|throughput)\b/.test(lower)) {
-    return 'Internet Speed';
-  }
-  if (/\b(geo|location|tracking|surveillance)\b/.test(lower)) return 'IP Location';
-  return 'Network & Security';
-}
-
-function scoreHotNewsItem(item: ParsedNewsItem, nowMs: number): number {
-  const ageHours = item.publishedTs > 0 ? Math.max(0, (nowMs - item.publishedTs) / 3600000) : 72;
-  const recencyScore = Math.max(0, 120 - ageHours * 2.5);
-  const haystack = `${item.title} ${item.summary}`.toLowerCase();
-  let keywordScore = 0;
-  for (const kw of HOT_NEWS_KEYWORDS) {
-    if (haystack.includes(kw)) {
-      keywordScore += 8;
-    }
-  }
-  return recencyScore + Math.min(keywordScore, 48);
-}
-
-function buildBlogFromNewsItem(
-  item: ParsedNewsItem,
-  dateKey: string,
-  slotIndex: number
-): DailyBlogPost {
-  const cleanSummary =
-    item.summary && item.summary.length > 35
-      ? item.summary
-      : `Daily cybersecurity and network briefing covering ${item.title}, reported by ${item.sourceName}.`;
-  const topicTag = inferHotNewsTopic(`${item.title} ${item.summary}`);
-  const idHash = crypto
-    .createHash('sha1')
-    .update(`${dateKey}:${item.link}`)
-    .digest('hex')
-    .slice(0, 8);
-
-  return {
-    id: `daily-hot-${dateKey}-${slotIndex + 1}-${idHash}`,
-    slug: `daily-hot-news-${dateKey}-${slugifyTitle(item.title)}`,
-    title: item.title,
-    category: 'Hot News',
-    publishedDate: formatHumanDate(dateKey),
-    readTime: '3 min read',
-    author: `TestLine Daily Digest · via ${item.sourceName}`,
-    summary: cleanSummary,
-    keyTakeaways: [
-      `Featured in TestLine's daily hot news briefing (${item.sourceName}) under ${topicTag}.`,
-      item.summary
-        ? `Core report summary: ${item.summary}`
-        : `Covers critical operational developments around ${item.title}.`,
-      'Always verify your active public IPv4/IPv6 address, DNS resolver latency, and VPN/proxy status before troubleshooting unexpected connection alerts.',
-    ],
-    sections: [
-      {
-        heading: `Daily Briefing: ${item.sourceName} Report`,
-        paragraphs: [
-          cleanSummary,
-          `Selected automatically for ${formatHumanDate(dateKey)}'s TestLine Hot News digest based on publication recency and network/cybersecurity impact. Readers looking to inspect the original technical reporting can follow the primary source link at the bottom of this article.`,
-        ],
-      },
-      {
-        heading: 'Network Diagnostics & Practical Action',
-        paragraphs: [
-          `Developments involving ${topicTag.toLowerCase()} often ripple across ISP DNS resolvers, carrier routing tables, enterprise VPN exit gateways, and endpoint connectivity. Running an on-demand speed benchmark and dual-stack IP check confirms whether your connection is experiencing elevated jitter, unexpected routing hops, or proxy relay changes.`,
-          'Stay ahead of emerging vulnerabilities and broadband advisories by monitoring live RSS updates in the TestLine News tab and reviewing our evergreen security guides in the Blog section.',
-        ],
-      },
-    ],
-    isDailyHotNews: true,
-    dailyDateKey: dateKey,
-    sourceName: item.sourceName,
-    sourceUrl: item.link,
-    topicTag,
-  };
-}
-
-async function loadDailyBlogsFromDisk(): Promise<DailyBlogPost[]> {
+async function loadDailyBlogsFromDisk(): Promise<BlogPost[]> {
   if (cachedDailyBlogs !== null) return cachedDailyBlogs;
   try {
     const raw = await fs.readFile(DAILY_BLOGS_CACHE_FILE, 'utf-8');
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      cachedDailyBlogs = parsed as DailyBlogPost[];
+      cachedDailyBlogs = parsed as BlogPost[];
       return cachedDailyBlogs;
     }
   } catch {
@@ -1061,7 +913,7 @@ async function loadDailyBlogsFromDisk(): Promise<DailyBlogPost[]> {
   return cachedDailyBlogs;
 }
 
-async function saveDailyBlogsToDisk(posts: DailyBlogPost[]): Promise<void> {
+async function saveDailyBlogsToDisk(posts: BlogPost[]): Promise<void> {
   const trimmed = posts.slice(0, 30); // Keep up to 15 days of 2 daily posts
   cachedDailyBlogs = trimmed;
   try {
@@ -1074,15 +926,15 @@ async function saveDailyBlogsToDisk(posts: DailyBlogPost[]): Promise<void> {
 let inFlightDailyBlogsPromise: Promise<{
   dateKey: string;
   updatedAt: string;
-  blogs: DailyBlogPost[];
+  blogs: BlogPost[];
 }> | null = null;
 
 async function ensureDailyHotNewsBlogs(forceRefreshToday = false): Promise<{
   dateKey: string;
   updatedAt: string;
-  blogs: DailyBlogPost[];
+  blogs: BlogPost[];
 }> {
-  const todayKey = getTodayDateKey();
+  const todayKey = getUtcDateKey();
   const existing = await loadDailyBlogsFromDisk();
   const existingToday = existing.filter((p) => p.dailyDateKey === todayKey);
 
@@ -1100,43 +952,20 @@ async function ensureDailyHotNewsBlogs(forceRefreshToday = false): Promise<{
 
   inFlightDailyBlogsPromise = (async () => {
     const newsPayload = await fetchAggregatedNews(forceRefreshToday);
-    const previousDays = existing.filter((p) => p.dailyDateKey !== todayKey);
-    const usedUrls = new Set(previousDays.map((p) => p.sourceUrl));
+    const merged = pickAndMergeDailyBlogs(newsPayload.items, existing, {
+      dateKey: todayKey,
+      forceRefreshToday,
+      maxRetainedPosts: 30,
+    });
 
-    const nowMs = Date.now();
-    const ranked = [...newsPayload.items].sort(
-      (a, b) => scoreHotNewsItem(b, nowMs) - scoreHotNewsItem(a, nowMs)
-    );
-
-    const freshPool = ranked.filter((item) => !usedUrls.has(item.link));
-    const candidatePool = freshPool.length >= 2 ? freshPool : ranked;
-
-    const picked: ParsedNewsItem[] = [];
-    if (candidatePool.length > 0) {
-      picked.push(candidatePool[0]);
-      const diverseSecond = candidatePool.find(
-        (item, idx) => idx > 0 && item.sourceId !== candidatePool[0].sourceId
-      );
-      if (diverseSecond) {
-        picked.push(diverseSecond);
-      } else if (candidatePool.length > 1) {
-        picked.push(candidatePool[1]);
-      }
-    }
-
-    const todayBlogs = picked
-      .slice(0, 2)
-      .map((item, idx) => buildBlogFromNewsItem(item, todayKey, idx));
-
-    const combined = [...todayBlogs, ...previousDays];
-    if (todayBlogs.length > 0) {
-      await saveDailyBlogsToDisk(combined);
+    if (merged.generatedToday && merged.blogs.length > 0) {
+      await saveDailyBlogsToDisk(merged.blogs);
     }
 
     return {
-      dateKey: todayKey,
+      dateKey: merged.dateKey,
       updatedAt: new Date().toISOString(),
-      blogs: combined,
+      blogs: merged.blogs,
     };
   })();
 
@@ -1744,7 +1573,7 @@ async function startServer() {
         req.path.startsWith('/src/') ||
         req.path.startsWith('/node_modules/') ||
         req.path.startsWith('/assets/') ||
-        /\.[a-z0-9]+$/i.test(req.path)
+        (/\.[a-z0-9]+$/i.test(req.path) && !/\.html$/i.test(req.path))
       ) {
         return next();
       }
@@ -1775,6 +1604,18 @@ async function startServer() {
   } else {
     const distDir = path.join(__dirname, 'dist');
     const templateHtml = await fs.readFile(path.join(distDir, 'index.html'), 'utf-8');
+    app.get(['/404', '/404.html'], async (req: Request, res: Response) => {
+      const origin = resolveBaseOrigin(req);
+      const { html, robotsHeader } = await renderSsrResponse(
+        templateHtml,
+        origin,
+        '/__not_found__'
+      );
+      res.set('Content-Type', 'text/html; charset=utf-8');
+      res.set('Cache-Control', 'no-store');
+      res.set('X-Robots-Tag', robotsHeader);
+      res.status(404).send(html);
+    });
     app.use(
       express.static(distDir, {
         index: false,

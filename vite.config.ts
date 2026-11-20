@@ -20,9 +20,9 @@ function testlinePrerenderPlugin(): Plugin {
       sequential: true,
       async handler() {
         const resolvedDist = path.resolve(rootDir, outDir);
-        const { routeCount, rssCount } = await prerenderDistDirectory(resolvedDist);
+        const { routeCount, rssCount, dailyBlogCount } = await prerenderDistDirectory(resolvedDist);
         console.log(
-          `[testline-prerender] Pre-rendered ${routeCount} routes + 404.html into ${outDir}/ (${rssCount} live RSS stories embedded).`
+          `[testline-prerender] Pre-rendered ${routeCount} routes + 404.html into ${outDir}/ (${rssCount} live RSS stories, ${dailyBlogCount} daily news blogs).`
         );
       },
     },

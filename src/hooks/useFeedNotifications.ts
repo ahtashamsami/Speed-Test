@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AppPage } from '../components/TopBar';
 import { BLOG_POSTS, type BlogPost } from '../data/blogPosts';
+import { getUtcDateKey, pickAndMergeDailyBlogs } from '../utils/dailyBlogGenerator';
 
 export interface NewsItem {
   id: string;
@@ -9,6 +10,7 @@ export interface NewsItem {
   title: string;
   link: string;
   summary: string;
+  fullSummary?: string;
   author: string | null;
   publishedAt: string | null;
   publishedTs: number;
@@ -216,7 +218,9 @@ async function fetchNewsViaClientFallback(): Promise<NewsApiResponse | null> {
           const title = stripHtmlClient(raw.title || '', 180);
           const link = typeof raw.link === 'string' ? raw.link.trim() : '';
           if (!title || !/^https?:\/\//i.test(link)) continue;
-          const summary = stripHtmlClient(raw.description || raw.content || '', 220);
+          const rawBody = raw.description || raw.content || '';
+          const summary = stripHtmlClient(rawBody, 220);
+          const fullSummary = stripHtmlClient(rawBody, 460);
           const author = raw.author ? stripHtmlClient(raw.author, 60) || null : null;
           const utcTs = raw.pubDate ? Date.parse(raw.pubDate.replace(' ', 'T') + 'Z') : NaN;
           const rawTs = raw.pubDate ? Date.parse(raw.pubDate) : NaN;
@@ -232,6 +236,7 @@ async function fetchNewsViaClientFallback(): Promise<NewsApiResponse | null> {
             title,
             link,
             summary,
+            fullSummary,
             author,
             publishedAt: publishedTs > 0 ? new Date(publishedTs).toISOString() : null,
             publishedTs,
@@ -332,15 +337,48 @@ export function useFeedNotifications(activePage: AppPage, isOnline: boolean) {
         }),
       ]);
 
+      let serverDailyBlogsLoaded = false;
+      let baselineDailyBlogs: BlogPost[] = readCachedDailyBlogs();
+
       if (blogsSettled.status === 'fulfilled' && blogsSettled.value.ok) {
         const contentType = blogsSettled.value.headers.get('content-type') || '';
         if (contentType.includes('json')) {
           const parsedDaily = (await blogsSettled.value.json()) as DailyBlogsApiResponse;
-          if (Array.isArray(parsedDaily.blogs)) {
+          if (Array.isArray(parsedDaily.blogs) && parsedDaily.blogs.length > 0) {
+            serverDailyBlogsLoaded = true;
+            baselineDailyBlogs = parsedDaily.blogs;
             setDailyBlogs(parsedDaily.blogs);
-            setDailyBlogsDateKey(parsedDaily.dateKey ?? null);
+            setDailyBlogsDateKey(parsedDaily.dateKey ?? getUtcDateKey());
             writeCachedDailyBlogs(parsedDaily.blogs);
           }
+        }
+      }
+
+      // On static hosting (e.g. Cloudflare), try the build-time daily-blogs.json snapshot as seed
+      if (!serverDailyBlogsLoaded) {
+        try {
+          const staticRes = await fetch('/daily-blogs.json', {
+            cache: 'no-cache',
+            headers: { Accept: 'application/json' },
+          });
+          if (staticRes.ok && (staticRes.headers.get('content-type') || '').includes('json')) {
+            const staticDaily = (await staticRes.json()) as DailyBlogsApiResponse;
+            if (Array.isArray(staticDaily.blogs) && staticDaily.blogs.length > 0) {
+              const seenIds = new Set(baselineDailyBlogs.map((b) => b.id));
+              const mergedSeed = [
+                ...baselineDailyBlogs,
+                ...staticDaily.blogs.filter((b) => !seenIds.has(b.id)),
+              ]
+                .sort((a, b) => (b.dailyDateKey || '').localeCompare(a.dailyDateKey || ''))
+                .slice(0, 30);
+              baselineDailyBlogs = mergedSeed;
+              setDailyBlogs(mergedSeed);
+              setDailyBlogsDateKey(staticDaily.dateKey ?? getUtcDateKey());
+              writeCachedDailyBlogs(mergedSeed);
+            }
+          }
+        } catch {
+          // Static snapshot optional; client-side generator below will still pick today's 2 stories
         }
       }
 
@@ -362,10 +400,32 @@ export function useFeedNotifications(activePage: AppPage, isOnline: boolean) {
         setCachedNewsSavedAt(savedAt);
         setIsShowingCachedNews(false);
         setNewsError(null);
+
+        // If /api/daily-blogs wasn't available (static host), automatically pick today's 2 top
+        // news stories, convert them into structured summaries, and publish them into the Blog
+        if (!serverDailyBlogsLoaded) {
+          const generated = pickAndMergeDailyBlogs(resolvedNews.items, baselineDailyBlogs, {
+            forceRefreshToday: forceRefresh,
+          });
+          if (generated.blogs.length > 0) {
+            setDailyBlogs(generated.blogs);
+            setDailyBlogsDateKey(generated.dateKey);
+            writeCachedDailyBlogs(generated.blogs);
+          }
+        }
       } else if (!applyCachedNewsFallback()) {
         setNewsError(
           'Unable to load live RSS feeds right now. Check your connection and try refreshing.'
         );
+      } else if (!serverDailyBlogsLoaded && newsDataRef.current?.items.length) {
+        const generated = pickAndMergeDailyBlogs(newsDataRef.current.items, baselineDailyBlogs, {
+          forceRefreshToday: false,
+        });
+        if (generated.blogs.length > 0) {
+          setDailyBlogs(generated.blogs);
+          setDailyBlogsDateKey(generated.dateKey);
+          writeCachedDailyBlogs(generated.blogs);
+        }
       }
     } catch {
       if (!applyCachedNewsFallback()) {
@@ -391,13 +451,24 @@ export function useFeedNotifications(activePage: AppPage, isOnline: boolean) {
     return () => window.clearInterval(timer);
   }, [isOnline, fetchFeedsAndDailyBlogs]);
 
-  // If the user switches to the News tab while no items are loaded yet, retry immediately
+  const blogRetryDateRef = useRef<string | null>(null);
+
+  // If the user switches to News or Blog while fresh items/daily posts are missing, retry immediately
   useEffect(() => {
-    if (activePage !== 'news' || !isOnline) return;
-    if (!newsData || newsData.items.length === 0 || newsError) {
+    if (!isOnline) return;
+    if (activePage === 'news' && (!newsData || newsData.items.length === 0 || newsError)) {
       void fetchFeedsAndDailyBlogs(false);
+      return;
     }
-  }, [activePage, isOnline, newsData, newsError, fetchFeedsAndDailyBlogs]);
+    if (activePage === 'blog') {
+      const todayKey = getUtcDateKey();
+      const todayCount = dailyBlogs.filter((p) => p.dailyDateKey === todayKey).length;
+      if (todayCount < 2 && blogRetryDateRef.current !== todayKey) {
+        blogRetryDateRef.current = todayKey;
+        void fetchFeedsAndDailyBlogs(false);
+      }
+    }
+  }, [activePage, isOnline, newsData, newsError, dailyBlogs, fetchFeedsAndDailyBlogs]);
 
   const allBlogPosts = useMemo(() => {
     const merged = [...dailyBlogs, ...BLOG_POSTS];

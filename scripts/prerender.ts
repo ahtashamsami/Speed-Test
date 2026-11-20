@@ -1,8 +1,12 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { BLOG_POSTS } from '../src/data/blogPosts';
+import { BLOG_POSTS, type BlogPost } from '../src/data/blogPosts';
 import { PAGE_PATHS, type KnownAppPage } from '../src/data/seoRoutes';
+import {
+  pickAndMergeDailyBlogs,
+  type DailyNewsCandidate,
+} from '../src/utils/dailyBlogGenerator';
 import { renderRouteHtmlSnapshot, type SsrNewsItem } from '../src/utils/ssrRenderer';
 
 const ORIGIN = 'https://testline.net';
@@ -12,6 +16,8 @@ const PRERENDER_RSS_SOURCES = [
   { id: 'thehackernews', name: 'The Hacker News', url: 'https://feeds.feedburner.com/TheHackersNews' },
   { id: 'cloudflare', name: 'Cloudflare Blog', url: 'https://blog.cloudflare.com/rss/' },
   { id: 'krebs', name: 'Krebs on Security', url: 'https://krebsonsecurity.com/feed/' },
+  { id: 'techcrunch', name: 'TechCrunch', url: 'https://techcrunch.com/feed/' },
+  { id: 'arstechnica', name: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/technology-lab' },
 ];
 
 function stripHtmlTags(raw: string, maxLen: number): string {
@@ -29,10 +35,10 @@ function stripHtmlTags(raw: string, maxLen: number): string {
   return `${plain.slice(0, maxLen - 1).trim()}…`;
 }
 
-async function fetchBuildTimeNewsPreview(): Promise<SsrNewsItem[]> {
+async function fetchBuildTimeNewsPreview(): Promise<DailyNewsCandidate[]> {
   if (process.env.SKIP_PRERENDER_NEWS_FETCH === 'true') return [];
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 3500);
+  const timeout = setTimeout(() => controller.abort(), 4500);
   try {
     const settled = await Promise.allSettled(
       PRERENDER_RSS_SOURCES.map(async (src) => {
@@ -48,28 +54,31 @@ async function fetchBuildTimeNewsPreview(): Promise<SsrNewsItem[]> {
             title?: string;
             link?: string;
             description?: string;
+            content?: string;
             author?: string;
             pubDate?: string;
           }>;
         };
         if (data.status !== 'ok' || !Array.isArray(data.items)) return [];
         return data.items
-          .slice(0, 4)
+          .slice(0, 6)
           .filter((i) => i.title && i.link && /^https?:\/\//i.test(i.link))
           .map((item, idx) => {
             const parsedTs = item.pubDate ? Date.parse(item.pubDate) : NaN;
             const ts = Number.isFinite(parsedTs) ? parsedTs : 0;
+            const rawBody = item.description || item.content || '';
             return {
               id: `${src.id}:${idx}`,
               sourceId: src.id,
               sourceName: src.name,
               title: stripHtmlTags(item.title || '', 180),
               link: item.link!.trim(),
-              summary: stripHtmlTags(item.description || '', 220),
+              summary: stripHtmlTags(rawBody, 220),
+              fullSummary: stripHtmlTags(rawBody, 460),
               author: item.author ? stripHtmlTags(item.author, 60) : null,
               publishedAt: ts > 0 ? new Date(ts).toISOString() : null,
               publishedTs: ts,
-            } satisfies SsrNewsItem;
+            } satisfies DailyNewsCandidate;
           });
       })
     );
@@ -77,7 +86,7 @@ async function fetchBuildTimeNewsPreview(): Promise<SsrNewsItem[]> {
     const items = settled
       .flatMap((r) => (r.status === 'fulfilled' ? r.value : []))
       .sort((a, b) => b.publishedTs - a.publishedTs);
-    return items.slice(0, 12);
+    return items.slice(0, 24);
   } catch {
     return [];
   } finally {
@@ -87,17 +96,38 @@ async function fetchBuildTimeNewsPreview(): Promise<SsrNewsItem[]> {
 
 export async function prerenderDistDirectory(
   distDir: string
-): Promise<{ routeCount: number; rssCount: number }> {
+): Promise<{ routeCount: number; rssCount: number; dailyBlogCount: number }> {
   const indexHtmlPath = path.join(distDir, 'index.html');
   const templateHtml = await fs.readFile(indexHtmlPath, 'utf-8');
   const adSenseClientId =
     process.env.VITE_ADSENSE_CLIENT_ID?.trim() || process.env.ADSENSE_PUBLISHER_ID?.trim() || '';
 
   const latestNewsItems = await fetchBuildTimeNewsPreview();
+  const ssrNewsItems: SsrNewsItem[] = latestNewsItems.slice(0, 12);
+
+  const dailyResult = pickAndMergeDailyBlogs(latestNewsItems, []);
+  const dailyBlogs: BlogPost[] = dailyResult.blogs;
+  const allBlogPosts: BlogPost[] = [...dailyBlogs, ...BLOG_POSTS];
+
+  if (dailyBlogs.length > 0) {
+    await fs.writeFile(
+      path.join(distDir, 'daily-blogs.json'),
+      JSON.stringify(
+        {
+          dateKey: dailyResult.dateKey,
+          updatedAt: new Date().toISOString(),
+          blogs: dailyBlogs,
+        },
+        null,
+        2
+      ),
+      'utf-8'
+    );
+  }
 
   const routePaths: string[] = [
     ...(Object.keys(PAGE_PATHS) as KnownAppPage[]).map((k) => PAGE_PATHS[k]),
-    ...BLOG_POSTS.map((post) => `/blog/${encodeURIComponent(post.slug)}`),
+    ...allBlogPosts.map((post) => `/blog/${encodeURIComponent(post.slug)}`),
   ];
 
   for (const routePath of routePaths) {
@@ -105,8 +135,8 @@ export async function prerenderDistDirectory(
       htmlTemplate: templateHtml,
       origin: ORIGIN,
       reqPath: routePath,
-      allBlogPosts: BLOG_POSTS,
-      latestNewsItems,
+      allBlogPosts,
+      latestNewsItems: ssrNewsItems,
       adSenseClientId,
     });
 
@@ -124,7 +154,7 @@ export async function prerenderDistDirectory(
     htmlTemplate: templateHtml,
     origin: ORIGIN,
     reqPath: '/__not_found__',
-    allBlogPosts: BLOG_POSTS,
+    allBlogPosts,
     latestNewsItems: [],
     adSenseClientId,
   });
@@ -132,7 +162,8 @@ export async function prerenderDistDirectory(
 
   return {
     routeCount: routePaths.length,
-    rssCount: latestNewsItems.length,
+    rssCount: ssrNewsItems.length,
+    dailyBlogCount: dailyBlogs.length,
   };
 }
 
@@ -147,9 +178,9 @@ if (isDirectCli) {
   const __dirname = path.dirname(__filename);
   const distDir = path.resolve(__dirname, '..', 'dist');
   prerenderDistDirectory(distDir)
-    .then(({ routeCount, rssCount }) => {
+    .then(({ routeCount, rssCount, dailyBlogCount }) => {
       console.log(
-        `Pre-rendered ${routeCount} routes + 404.html into dist/ (${rssCount} build-time RSS stories included).`
+        `Pre-rendered ${routeCount} routes + 404.html into dist/ (${rssCount} RSS stories, ${dailyBlogCount} daily news blog posts).`
       );
     })
     .catch((err) => {

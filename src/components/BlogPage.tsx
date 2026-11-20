@@ -42,6 +42,15 @@ export const BlogPage = memo(function BlogPage({
       if (post.isDailyHotNews) {
         const topicDisplay = post.topicTag ?? displayCategory;
         const sourceLabel = post.sourceName ?? 'RSS';
+        if (lang === 'en' && post.sections.length > 0) {
+          return {
+            ...post,
+            displayCategory,
+            displayDate,
+            readTime: post.readTime || t.blog.dailyReadTime,
+            author: post.author || `${t.blog.dailyAuthorPrefix} ${sourceLabel}`,
+          };
+        }
         return {
           ...post,
           displayCategory,
@@ -87,7 +96,7 @@ export const BlogPage = memo(function BlogPage({
         displayDate,
       };
     });
-  }, [posts, t.blog, t.meta.intlLocale]);
+  }, [lang, posts, t.blog, t.meta.intlLocale]);
 
   const hotNewsCount = useMemo(
     () => localizedPosts.filter((p) => p.category === 'Hot News').length,

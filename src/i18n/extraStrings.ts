@@ -7,6 +7,7 @@ export interface ExtraUiStrings {
     code: string;
     title: string;
     description: string;
+    backToHome: string;
     runSpeedTest: string;
     readBlogGuides: string;
     readNews: string;
@@ -27,7 +28,8 @@ export const EXTRA_UI_STRINGS: Record<SupportedLang, ExtraUiStrings> = {
       code: 'HTTP 404',
       title: 'Page Not Found',
       description:
-        'The URL you requested does not match an active TestLine route. Run a live internet speed test, inspect your public IPv4/IPv6 diagnostics, or open our guides.',
+        'The URL you requested does not match an active TestLine route. Return home to run a live internet speed test, inspect your public IPv4/IPv6 diagnostics, or open our guides.',
+      backToHome: 'Back to Home',
       runSpeedTest: 'Run Speed Test',
       readBlogGuides: 'Browse Blog Guides',
       readNews: 'Security & Network News',
@@ -55,6 +57,7 @@ export const EXTRA_UI_STRINGS: Record<SupportedLang, ExtraUiStrings> = {
       description:
         'Die angeforderte URL existiert auf TestLine nicht. Starten Sie einen Live-Speedtest, prüfen Sie Ihre öffentliche IPv4/IPv6-Diagnose oder lesen Sie unsere Ratgeber.',
       runSpeedTest: 'Speedtest starten',
+      backToHome: 'Zur Startseite',
       readBlogGuides: 'Blog-Ratgeber öffnen',
       readNews: 'Netzwerk-Nachrichten',
       seoTitle: '404 — Seite nicht gefunden | TestLine',
@@ -81,6 +84,7 @@ export const EXTRA_UI_STRINGS: Record<SupportedLang, ExtraUiStrings> = {
       description:
         'L’URL demandée ne correspond à aucune page active sur TestLine. Lancez un test de débit, vérifiez votre IPv4/IPv6 ou consultez nos guides.',
       runSpeedTest: 'Lancer le test de débit',
+      backToHome: 'Retour à l’accueil',
       readBlogGuides: 'Consulter les guides',
       readNews: 'Actualités réseau',
       seoTitle: '404 — Page introuvable | TestLine',
@@ -107,6 +111,7 @@ export const EXTRA_UI_STRINGS: Record<SupportedLang, ExtraUiStrings> = {
       description:
         'La URL solicitada no existe en TestLine. Ejecuta una prueba de velocidad en vivo, revisa tu diagnóstico IPv4/IPv6 o explora nuestras guías.',
       runSpeedTest: 'Ejecutar test de velocidad',
+      backToHome: 'Volver al inicio',
       readBlogGuides: 'Ver guías del blog',
       readNews: 'Noticias de red',
       seoTitle: '404 — Página no encontrada | TestLine',
@@ -133,6 +138,7 @@ export const EXTRA_UI_STRINGS: Record<SupportedLang, ExtraUiStrings> = {
       description:
         'O endereço solicitado não corresponde a nenhuma rota ativa do TestLine. Execute um teste de velocidade, verifique seu IP público ou leia nossos guias.',
       runSpeedTest: 'Iniciar teste de velocidade',
+      backToHome: 'Voltar ao início',
       readBlogGuides: 'Ver guias do blog',
       readNews: 'Notícias de rede',
       seoTitle: '404 — Página não encontrada | TestLine',
@@ -159,6 +165,7 @@ export const EXTRA_UI_STRINGS: Record<SupportedLang, ExtraUiStrings> = {
       description:
         'L’URL richiesto non esiste su TestLine. Avvia un test di velocità, controlla la diagnostica IPv4/IPv6 o esplora le nostre guide.',
       runSpeedTest: 'Avvia Speed Test',
+      backToHome: 'Torna alla home',
       readBlogGuides: 'Esplora le guide',
       readNews: 'Notizie di rete',
       seoTitle: '404 — Pagina non trovata | TestLine',
@@ -185,6 +192,7 @@ export const EXTRA_UI_STRINGS: Record<SupportedLang, ExtraUiStrings> = {
       description:
         'De opgevraagde URL bestaat niet op TestLine. Start een snelheidstest, bekijk uw publieke IPv4/IPv6-diagnose of lees onze handleidingen.',
       runSpeedTest: 'Snelheidstest starten',
+      backToHome: 'Terug naar home',
       readBlogGuides: 'Bloggidsen bekijken',
       readNews: 'Netwerknieuws',
       seoTitle: '404 — Pagina niet gevonden | TestLine',
@@ -211,6 +219,7 @@ export const EXTRA_UI_STRINGS: Record<SupportedLang, ExtraUiStrings> = {
       description:
         'Podany adres URL nie istnieje w TestLine. Uruchom test prędkości, sprawdź diagnostykę IPv4/IPv6 lub otwórz nasze poradniki.',
       runSpeedTest: 'Uruchom test prędkości',
+      backToHome: 'Wróć na stronę główną',
       readBlogGuides: 'Zobacz poradniki',
       readNews: 'Wiadomości sieciowe',
       seoTitle: '404 — Nie znaleziono strony | TestLine',
@@ -237,6 +246,7 @@ export const EXTRA_UI_STRINGS: Record<SupportedLang, ExtraUiStrings> = {
       description:
         'Запрошенный URL не найден на TestLine. Запустите тест скорости интернета, проверьте публичный IPv4/IPv6 или откройте наши руководства.',
       runSpeedTest: 'Запустить тест скорости',
+      backToHome: 'На главную',
       readBlogGuides: 'Открыть руководства',
       readNews: 'Новости сети',
       seoTitle: '404 — Страница не найдена | TestLine',
@@ -263,6 +273,7 @@ export const EXTRA_UI_STRINGS: Record<SupportedLang, ExtraUiStrings> = {
       description:
         'Запитана URL-адреса не існує на TestLine. Запустіть тест швидкості інтернету, перевірте публічний IPv4/IPv6 або перегляньте наші посібники.',
       runSpeedTest: 'Запустити тест швидкості',
+      backToHome: 'На головну',
       readBlogGuides: 'Переглянути посібники',
       readNews: 'Новини мережі',
       seoTitle: '404 — Сторінку не знайдено | TestLine',
@@ -289,6 +300,7 @@ export const EXTRA_UI_STRINGS: Record<SupportedLang, ExtraUiStrings> = {
       description:
         'Den begärda webbadressen finns inte på TestLine. Starta ett hastighetstest, kontrollera IPv4/IPv6-diagnostik eller läs våra guider.',
       runSpeedTest: 'Starta hastighetstest',
+      backToHome: 'Tillbaka till startsidan',
       readBlogGuides: 'Läs blogg-guider',
       readNews: 'Nätverksnyheter',
       seoTitle: '404 — Sidan hittades inte | TestLine',
@@ -315,6 +327,7 @@ export const EXTRA_UI_STRINGS: Record<SupportedLang, ExtraUiStrings> = {
       description:
         'Nettadressen finnes ikke på TestLine. Kjør en hastighetstest, sjekk din offentlige IPv4/IPv6-diagnostikk eller les våre veiledninger.',
       runSpeedTest: 'Start hastighetstest',
+      backToHome: 'Tilbake til forsiden',
       readBlogGuides: 'Les blogguider',
       readNews: 'Nettverksnyheter',
       seoTitle: '404 — Siden ble ikke funnet | TestLine',
@@ -341,6 +354,7 @@ export const EXTRA_UI_STRINGS: Record<SupportedLang, ExtraUiStrings> = {
       description:
         'Den ønskede URL findes ikke på TestLine. Kør en hastighedstest, tjek din IPv4/IPv6-diagnostik eller læs vores guider.',
       runSpeedTest: 'Start hastighedstest',
+      backToHome: 'Tilbage til forsiden',
       readBlogGuides: 'Læs blogguider',
       readNews: 'Netværksnyheder',
       seoTitle: '404 — Siden blev ikke fundet | TestLine',
@@ -367,6 +381,7 @@ export const EXTRA_UI_STRINGS: Record<SupportedLang, ExtraUiStrings> = {
       description:
         'Pyydettyä osoitetta ei löydy TestLinesta. Tee nopeustesti, tarkista IPv4/IPv6-diagnostiikka tai lue oppaitamme.',
       runSpeedTest: 'Käynnistä nopeustesti',
+      backToHome: 'Takaisin etusivulle',
       readBlogGuides: 'Selaa oppaita',
       readNews: 'Verkkouutiset',
       seoTitle: '404 — Sivua ei löytynyt | TestLine',
@@ -393,6 +408,7 @@ export const EXTRA_UI_STRINGS: Record<SupportedLang, ExtraUiStrings> = {
       description:
         'Požadovaná adresa na webu TestLine neexistuje. Spusťte test rychlosti internetu, ověřte diagnostiku IPv4/IPv6 nebo si přečtěte naše průvodce.',
       runSpeedTest: 'Spustit test rychlosti',
+      backToHome: 'Zpět na úvodní stránku',
       readBlogGuides: 'Zobrazit průvodce',
       readNews: 'Síťové zprávy',
       seoTitle: '404 — Stránka nenalezena | TestLine',
@@ -419,6 +435,7 @@ export const EXTRA_UI_STRINGS: Record<SupportedLang, ExtraUiStrings> = {
       description:
         'Adresa URL solicitată nu există pe TestLine. Rulează un test de viteză, verifică diagnosticul IPv4/IPv6 sau consultă ghidurile noastre.',
       runSpeedTest: 'Pornește testul de viteză',
+      backToHome: 'Înapoi la pagina principală',
       readBlogGuides: 'Explorează ghidurile',
       readNews: 'Știri de rețea',
       seoTitle: '404 — Pagina nu a fost găsită | TestLine',
@@ -445,6 +462,7 @@ export const EXTRA_UI_STRINGS: Record<SupportedLang, ExtraUiStrings> = {
       description:
         'A kért URL-cím nem található a TestLine oldalán. Indítson sebességtesztet, ellenőrizze IPv4/IPv6 adatait, vagy olvassa el útmutatóinkat.',
       runSpeedTest: 'Sebességteszt indítása',
+      backToHome: 'Vissza a főoldalra',
       readBlogGuides: 'Útmutatók megnyitása',
       readNews: 'Hálózati hírek',
       seoTitle: '404 — Az oldal nem található | TestLine',
@@ -471,6 +489,7 @@ export const EXTRA_UI_STRINGS: Record<SupportedLang, ExtraUiStrings> = {
       description:
         'Η διεύθυνση URL που ζητήσατε δεν υπάρχει στο TestLine. Εκτελέστε μια δοκιμή ταχύτητας, ελέγξτε τη διάγνωση IPv4/IPv6 ή διαβάστε τους οδηγούς μας.',
       runSpeedTest: 'Έναρξη δοκιμής ταχύτητας',
+      backToHome: 'Επιστροφή στην αρχική',
       readBlogGuides: 'Προβολή οδηγών',
       readNews: 'Νέα δικτύου',
       seoTitle: '404 — Η σελίδα δεν βρέθηκε | TestLine',
@@ -497,6 +516,7 @@ export const EXTRA_UI_STRINGS: Record<SupportedLang, ExtraUiStrings> = {
       description:
         'الرابط الذي طلبته غير موجود على TestLine. شغّل اختبار سرعة الإنترنت، أو افحص عنوان IPv4/IPv6، أو تصفح الأدلة الهندسية.',
       runSpeedTest: 'تشغيل اختبار السرعة',
+      backToHome: 'العودة إلى الرئيسية',
       readBlogGuides: 'تصفح أدلة المدونة',
       readNews: 'أخبار الشبكات والأمن',
       seoTitle: '404 — الصفحة غير موجودة | TestLine',

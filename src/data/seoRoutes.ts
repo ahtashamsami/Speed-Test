@@ -35,7 +35,17 @@ export interface ParsedRouteState {
 }
 
 export function parseRouteState(pathname: string, hash = ''): ParsedRouteState {
-  const normalizedPath = pathname.toLowerCase().replace(/\/+$/, '') || '/';
+  let normalizedPath = pathname.toLowerCase().replace(/\/+$/, '') || '/';
+
+  if (normalizedPath === '/404' || normalizedPath === '/404.html') {
+    return { page: 'not-found', blogSlug: null };
+  }
+
+  if (normalizedPath === '/index.html') {
+    normalizedPath = '/';
+  } else if (normalizedPath.endsWith('.html')) {
+    normalizedPath = normalizedPath.slice(0, -'.html'.length) || '/';
+  }
 
   if (normalizedPath === '/') {
     const cleanHash = hash.replace(/^#/, '').toLowerCase();
@@ -61,7 +71,10 @@ export function parseRouteState(pathname: string, hash = ''): ParsedRouteState {
   if (normalizedPath === '/blog') return { page: 'blog', blogSlug: null };
 
   if (normalizedPath.startsWith('/blog/')) {
-    const rawSlug = pathname.slice('/blog/'.length).replace(/\/+$/, '');
+    let rawSlug = pathname.slice('/blog/'.length).replace(/\/+$/, '');
+    if (rawSlug.toLowerCase().endsWith('.html')) {
+      rawSlug = rawSlug.slice(0, -'.html'.length);
+    }
     if (rawSlug && !rawSlug.includes('/')) {
       return { page: 'blog', blogSlug: decodeURIComponent(rawSlug).toLowerCase() };
     }
