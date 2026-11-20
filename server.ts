@@ -147,6 +147,7 @@ async function buildSitemapXml(origin: string): Promise<string> {
     { path: '/', lastmod: today, changefreq: 'daily', priority: '1.0' },
     { path: '/blog', lastmod: today, changefreq: 'weekly', priority: '0.9' },
     { path: '/news', lastmod: today, changefreq: 'hourly', priority: '0.8' },
+    { path: '/chrome-extension', lastmod: today, changefreq: 'monthly', priority: '0.8' },
     ...BLOG_POSTS.map((post) => ({
       path: `/blog/${encodeURIComponent(post.slug)}`,
       lastmod: post.publishedDateIso || '2026-11-15',
@@ -1046,6 +1047,39 @@ async function startServer() {
     next();
   });
 
+  // Verified binary download endpoint for the Testline Speed Test Chrome Extension (.zip)
+  app.get('/api/chrome-extension.zip', async (_req: Request, res: Response) => {
+    const candidates = [
+      path.join(__dirname, 'public', 'downloads', 'testline-speed-test-extension.zip'),
+      path.join(__dirname, 'dist', 'downloads', 'testline-speed-test-extension.zip'),
+    ];
+    for (const candidate of candidates) {
+      try {
+        const zipBuffer = await fs.readFile(candidate);
+        if (
+          zipBuffer.length > 100 &&
+          zipBuffer[0] === 0x50 &&
+          zipBuffer[1] === 0x4b &&
+          zipBuffer[2] === 0x03 &&
+          zipBuffer[3] === 0x04
+        ) {
+          res.set({
+            'Content-Type': 'application/zip',
+            'Content-Disposition': 'attachment; filename="testline-speed-test-extension.zip"',
+            'Content-Length': String(zipBuffer.length),
+            'Cache-Control': 'no-store, no-cache',
+            'X-Content-Type-Options': 'nosniff',
+          });
+          res.status(200).send(zipBuffer);
+          return;
+        }
+      } catch {
+        // Try next path
+      }
+    }
+    res.status(404).json({ error: 'Chrome extension ZIP archive not found' });
+  });
+
   // Dynamic SEO & GEO/LLM crawler files (supports ?download=1 for direct browser download)
   app.get('/sitemap.xml', async (req: Request, res: Response) => {
     const origin = resolveBaseOrigin(req);
@@ -1242,7 +1276,7 @@ async function startServer() {
       },
       pages: (Object.keys(PAGE_PATHS) as KnownAppPage[]).map((pageKey) => {
         const routePath = PAGE_PATHS[pageKey];
-        const seo = enPack.seo[pageKey];
+        const seo = enPack.seo[pageKey] ?? enPack.seo.home;
         return {
           path: routePath,
           url: `${origin}${routePath}`,
@@ -1573,6 +1607,8 @@ async function startServer() {
         req.path.startsWith('/src/') ||
         req.path.startsWith('/node_modules/') ||
         req.path.startsWith('/assets/') ||
+        req.path.startsWith('/chrome-extension/') ||
+        req.path.startsWith('/downloads/') ||
         (/\.[a-z0-9]+$/i.test(req.path) && !/\.html$/i.test(req.path))
       ) {
         return next();
@@ -1636,7 +1672,9 @@ async function startServer() {
       if (
         req.path.startsWith('/api/') ||
         req.path.startsWith('/.well-known/') ||
-        /\.(?:json|webmanifest|xml|txt|map|js|mjs|css|png|jpe?g|svg|ico|webp|woff2?)$/i.test(
+        req.path.startsWith('/chrome-extension/') ||
+        req.path.startsWith('/downloads/') ||
+        /\.(?:json|webmanifest|xml|txt|zip|map|js|mjs|css|png|jpe?g|svg|ico|webp|woff2?)$/i.test(
           req.path
         )
       ) {

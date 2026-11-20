@@ -30,9 +30,12 @@ export const TopBar = memo(function TopBar({
 }: TopBarProps) {
   const { t, lang, geoLang, setManualLang } = useI18n();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [appDropdownOpen, setAppDropdownOpen] = useState(false);
   const [tabWordIndex, setTabWordIndex] = useState(0);
   const desktopMenuRef = useRef<HTMLDivElement | null>(null);
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
+  const desktopAppMenuRef = useRef<HTMLDivElement | null>(null);
+  const mobileAppMenuRef = useRef<HTMLDivElement | null>(null);
 
   const rotatingTabWords = ['TestLine', t.nav.about, t.nav.privacy] as const;
 
@@ -42,11 +45,17 @@ export const TopBar = memo(function TopBar({
     { id: 'blog', label: t.nav.blog },
   ];
 
+  const appMenuItems: Array<{ id: KnownAppPage; label: string }> = [
+    { id: 'chrome-extension', label: 'Extension' },
+  ];
+
   const companyMenuItems: Array<{ id: KnownAppPage; label: string }> = [
     { id: 'about', label: t.nav.about },
     { id: 'contact', label: t.nav.contact },
     { id: 'privacy', label: t.nav.privacy },
   ];
+
+  const isAppPageActive = activePage === 'chrome-extension';
 
   const isCompanyPageActive =
     activePage === 'about' || activePage === 'contact' || activePage === 'privacy';
@@ -60,23 +69,31 @@ export const TopBar = memo(function TopBar({
 
   useEffect(() => {
     setDropdownOpen(false);
+    setAppDropdownOpen(false);
   }, [activePage]);
 
   useEffect(() => {
-    if (!dropdownOpen) return;
+    if (!dropdownOpen && !appDropdownOpen) return;
 
     const handlePointerDown = (e: PointerEvent) => {
       const target = e.target as Node | null;
-      const inDesktop = desktopMenuRef.current?.contains(target ?? null) ?? false;
-      const inMobile = mobileMenuRef.current?.contains(target ?? null) ?? false;
-      if (!inDesktop && !inMobile) {
+      const inCompanyDesktop = desktopMenuRef.current?.contains(target ?? null) ?? false;
+      const inCompanyMobile = mobileMenuRef.current?.contains(target ?? null) ?? false;
+      const inAppDesktop = desktopAppMenuRef.current?.contains(target ?? null) ?? false;
+      const inAppMobile = mobileAppMenuRef.current?.contains(target ?? null) ?? false;
+
+      if (!inCompanyDesktop && !inCompanyMobile) {
         setDropdownOpen(false);
+      }
+      if (!inAppDesktop && !inAppMobile) {
+        setAppDropdownOpen(false);
       }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setDropdownOpen(false);
+        setAppDropdownOpen(false);
       }
     };
 
@@ -86,10 +103,11 @@ export const TopBar = memo(function TopBar({
       window.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [dropdownOpen]);
+  }, [dropdownOpen, appDropdownOpen]);
 
   const handleSelectDropdownPage = (page: KnownAppPage) => {
     setDropdownOpen(false);
+    setAppDropdownOpen(false);
     onNavigate(page);
   };
 
@@ -171,10 +189,70 @@ export const TopBar = memo(function TopBar({
             );
           })}
 
+          {/* Desktop App Dropdown */}
+          <div ref={desktopAppMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                setDropdownOpen(false);
+                setAppDropdownOpen((open) => !open);
+              }}
+              aria-expanded={appDropdownOpen}
+              aria-haspopup="menu"
+              aria-label="App menu"
+              className={`inline-flex items-center gap-1.5 min-h-[38px] px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                isAppPageActive || appDropdownOpen
+                  ? 'text-slate-900 dark:text-slate-100 font-semibold bg-slate-100/80 dark:bg-slate-800/70'
+                  : 'hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
+              }`}
+            >
+              <span>App</span>
+              <ChevronDown
+                className={`w-4 h-4 transition-transform duration-150 ${
+                  appDropdownOpen ? 'rotate-180' : ''
+                }`}
+                aria-hidden="true"
+              />
+            </button>
+
+            {appDropdownOpen && (
+              <div
+                role="menu"
+                aria-label="App menu"
+                className="absolute left-0 mt-2 w-44 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] shadow-lg py-1.5 z-50"
+              >
+                {appMenuItems.map((item) => {
+                  const active = activePage === item.id;
+                  return (
+                    <a
+                      key={item.id}
+                      role="menuitem"
+                      href={PAGE_PATHS[item.id]}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleSelectDropdownPage(item.id);
+                      }}
+                      className={`flex items-center min-h-[40px] px-4 py-2 text-sm transition-colors ${
+                        active
+                          ? 'text-sky-700 dark:text-sky-400 font-semibold bg-slate-50 dark:bg-slate-800/60'
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-slate-100'
+                      }`}
+                    >
+                      {item.label}
+                    </a>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           <div ref={desktopMenuRef} className="relative">
             <button
               type="button"
-              onClick={() => setDropdownOpen((open) => !open)}
+              onClick={() => {
+                setAppDropdownOpen(false);
+                setDropdownOpen((open) => !open);
+              }}
               aria-expanded={dropdownOpen}
               aria-haspopup="menu"
               aria-label={t.nav.companyMenuAria}
@@ -310,7 +388,7 @@ export const TopBar = memo(function TopBar({
                 aria-label={
                   badgeCount > 0 ? `${item.label} (${badgeCount} ${t.nav.newBadgeSuffix})` : undefined
                 }
-                className={`inline-flex items-center min-h-[38px] px-2.5 py-1.5 rounded-lg whitespace-nowrap shrink-0 transition-colors ${
+                className={`inline-flex items-center min-h-[38px] px-2 py-1.5 rounded-lg whitespace-nowrap shrink-0 transition-colors ${
                   active
                     ? 'text-slate-900 dark:text-slate-100 font-semibold bg-slate-100/80 dark:bg-slate-800/60'
                     : 'hover:text-slate-900 dark:hover:text-slate-100'
@@ -328,12 +406,71 @@ export const TopBar = memo(function TopBar({
               </a>
             );
           })}
+          {/* Mobile App Dropdown */}
+          <div ref={mobileAppMenuRef} className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setDropdownOpen(false);
+                setAppDropdownOpen((open) => !open);
+              }}
+              aria-expanded={appDropdownOpen}
+              aria-haspopup="menu"
+              aria-label="App menu"
+              className={`inline-flex items-center gap-1 min-h-[38px] px-2 py-1.5 rounded-lg whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
+                isAppPageActive || appDropdownOpen
+                  ? 'text-slate-900 dark:text-slate-100 font-semibold bg-slate-100/80 dark:bg-slate-800/60'
+                  : 'hover:text-slate-900 dark:hover:text-slate-100'
+              }`}
+            >
+              <span>App</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform duration-150 ${
+                  appDropdownOpen ? 'rotate-180' : ''
+                }`}
+                aria-hidden="true"
+              />
+            </button>
+
+            {appDropdownOpen && (
+              <div
+                role="menu"
+                aria-label="App menu"
+                className="absolute left-0 mt-1.5 w-40 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] shadow-lg py-1.5 z-50"
+              >
+                {appMenuItems.map((item) => {
+                  const active = activePage === item.id;
+                  return (
+                    <a
+                      key={item.id}
+                      role="menuitem"
+                      href={PAGE_PATHS[item.id]}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleSelectDropdownPage(item.id);
+                      }}
+                      className={`flex items-center min-h-[42px] px-3.5 py-2 text-xs transition-colors ${
+                        active
+                          ? 'text-sky-700 dark:text-sky-400 font-semibold bg-slate-50 dark:bg-slate-800/60'
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-slate-800/70'
+                      }`}
+                    >
+                      {item.label}
+                    </a>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         <div ref={mobileMenuRef} className="relative shrink-0">
           <button
             type="button"
-            onClick={() => setDropdownOpen((open) => !open)}
+            onClick={() => {
+              setAppDropdownOpen(false);
+              setDropdownOpen((open) => !open);
+            }}
             aria-expanded={dropdownOpen}
             aria-haspopup="menu"
             aria-label={t.nav.companyMenuAria}

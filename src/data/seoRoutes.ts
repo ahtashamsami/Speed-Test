@@ -4,6 +4,7 @@ export type KnownAppPage =
   | 'home'
   | 'news'
   | 'blog'
+  | 'chrome-extension'
   | 'about'
   | 'privacy'
   | 'contact'
@@ -19,6 +20,7 @@ export const PAGE_PATHS: Record<KnownAppPage, string> = {
   home: '/',
   news: '/news',
   blog: '/blog',
+  'chrome-extension': '/chrome-extension',
   about: '/about',
   privacy: '/privacy-policy',
   contact: '/contact',
@@ -54,6 +56,9 @@ export function parseRouteState(pathname: string, hash = ''): ParsedRouteState {
     }
     if (cleanHash === 'news') return { page: 'news', blogSlug: null };
     if (cleanHash === 'blog') return { page: 'blog', blogSlug: null };
+    if (cleanHash === 'chrome-extension' || cleanHash === 'extension') {
+      return { page: 'chrome-extension', blogSlug: null };
+    }
     if (cleanHash === 'about') return { page: 'about', blogSlug: null };
     if (cleanHash === 'privacy' || cleanHash === 'privacy-policy') {
       return { page: 'privacy', blogSlug: null };
@@ -69,6 +74,9 @@ export function parseRouteState(pathname: string, hash = ''): ParsedRouteState {
 
   if (normalizedPath === '/news') return { page: 'news', blogSlug: null };
   if (normalizedPath === '/blog') return { page: 'blog', blogSlug: null };
+  if (normalizedPath === '/chrome-extension') {
+    return { page: 'chrome-extension', blogSlug: null };
+  }
 
   if (normalizedPath.startsWith('/blog/')) {
     let rawSlug = pathname.slice('/blog/'.length).replace(/\/+$/, '');

@@ -92,6 +92,8 @@ export default defineConfig(() => {
           navigateFallbackDenylist: [
             /^\/api\//,
             /^\/\.well-known\//,
+            /^\/chrome-extension\//,
+            /^\/downloads\//,
             /^\/manifest\.(?:webmanifest|json)$/,
             /^\/(?:sitemap\.xml|robots\.txt|ads\.txt|llms(?:-full)?\.txt)$/,
           ],

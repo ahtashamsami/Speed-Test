@@ -26,14 +26,25 @@ export interface TranslationPack {
     nativeName: string;
   };
   seo: Record<
-    KnownAppPage,
+    Exclude<KnownAppPage, 'chrome-extension'>,
     {
       title: string;
       description: string;
       keywords: string;
       breadcrumbLabel: string;
     }
-  >;
+  > &
+    Partial<
+      Record<
+        'chrome-extension',
+        {
+          title: string;
+          description: string;
+          keywords: string;
+          breadcrumbLabel: string;
+        }
+      >
+    >;
   nav: {
     speedTest: string;
     news: string;

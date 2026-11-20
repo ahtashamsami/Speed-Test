@@ -21,6 +21,10 @@ export const Footer = memo(function Footer({ activePage, onNavigate }: FooterPro
     { id: 'privacy', label: t.footer.privacy },
   ];
 
+  const appLinks: Array<{ id: KnownAppPage; label: string }> = [
+    { id: 'chrome-extension', label: 'Extension' },
+  ];
+
   const companyLinks: Array<{ id: KnownAppPage; label: string }> = [
     { id: 'home', label: t.nav.speedTest },
     { id: 'news', label: t.nav.news },
@@ -73,7 +77,33 @@ export const Footer = memo(function Footer({ activePage, onNavigate }: FooterPro
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-7 sm:gap-12 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-7 sm:gap-10 text-xs">
+            <div className="space-y-1.5">
+              <div className="font-semibold text-slate-800 dark:text-slate-200">
+                App
+              </div>
+              <ul className="space-y-1 text-slate-600 dark:text-slate-400">
+                {appLinks.map((link) => (
+                  <li key={link.id}>
+                    <a
+                      href={PAGE_PATHS[link.id]}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onNavigate(link.id);
+                      }}
+                      className={`inline-flex items-center min-h-[34px] py-1.5 px-1.5 -mx-1.5 rounded-md hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/70 dark:hover:bg-slate-800/60 transition-colors whitespace-nowrap ${
+                        activePage === link.id
+                          ? 'text-sky-700 dark:text-sky-400 font-medium'
+                          : ''
+                      }`}
+                    >
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
             <div className="space-y-1.5">
               <div className="font-semibold text-slate-800 dark:text-slate-200">
                 {t.footer.companyHeading}
@@ -128,9 +158,19 @@ export const Footer = memo(function Footer({ activePage, onNavigate }: FooterPro
           </div>
         </div>
 
-        <div className="pt-5 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+        <div className="pt-5 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs text-slate-500 dark:text-slate-400">
           <span>
             &copy; {new Date().getFullYear()} {t.footer.copyrightSuffix}
+          </span>
+          <span
+            aria-label="Keyboard shortcut: press S to start speed test"
+            className="inline-flex items-center gap-1.5 text-slate-500 dark:text-slate-400"
+          >
+            <span>Shortcut: Press</span>
+            <kbd className="inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 font-mono text-[11px] font-semibold rounded border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+              S
+            </kbd>
+            <span>to start speed test</span>
           </span>
           <span>{t.footer.poweredBy}</span>
         </div>

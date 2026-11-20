@@ -12,7 +12,7 @@ import { formatDateLong } from '../utils/formatters';
 import type { AppPage, KnownAppPage } from './TopBar';
 
 interface LegalAndInfoPagesProps {
-  page: Exclude<KnownAppPage, 'home' | 'news' | 'blog'>;
+  page: Exclude<KnownAppPage, 'home' | 'news' | 'blog' | 'chrome-extension'>;
   onBackHome: () => void;
   onNavigate: (page: AppPage) => void;
 }

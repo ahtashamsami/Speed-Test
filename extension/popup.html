@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=500, initial-scale=1.0" />
+    <title>Testline Speed Test</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body data-theme="light">
+    <div class="popup-shell" id="popupShell" data-state="ready">
+      <!-- Top Bar -->
+      <header class="top-bar">
+        <div class="brand">
+          <img
+            src="icons/logo-light.png"
+            alt="TestLine"
+            class="brand-logo logo-light"
+            width="54"
+            height="36"
+          />
+          <img
+            src="icons/logo-dark.png"
+            alt="TestLine"
+            class="brand-logo logo-dark"
+            width="54"
+            height="36"
+          />
+          <span class="brand-divider" aria-hidden="true"></span>
+          <h1 class="brand-title">Speed Test</h1>
+        </div>
+
+        <div class="top-controls">
+          <!-- Mbps / MB/s Unit Toggle -->
+          <div class="unit-toggle" role="group" aria-label="Speed unit">
+            <button
+              id="unitMbpsBtn"
+              class="unit-btn is-active"
+              type="button"
+              data-unit="Mbps"
+              aria-pressed="true"
+            >
+              Mbps
+            </button>
+            <button
+              id="unitMBsBtn"
+              class="unit-btn"
+              type="button"
+              data-unit="MB/s"
+              aria-pressed="false"
+            >
+              MB/s
+            </button>
+          </div>
+
+          <!-- Tactile Rounded Pill Sun / Moon Theme Toggle (Icon-only) -->
+          <button
+            id="themeToggle"
+            class="theme-toggle"
+            type="button"
+            aria-label="Toggle Light and Dark theme"
+            aria-pressed="false"
+            title="Switch Light / Dark theme"
+          >
+            <span class="toggle-thumb" aria-hidden="true"></span>
+            <span class="toggle-slot slot-sun" aria-hidden="true">
+              <svg class="theme-icon icon-sun" viewBox="0 0 24 24" width="14" height="14">
+                <circle cx="12" cy="12" r="4.2" fill="currentColor" />
+                <g stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <line x1="12" y1="2.2" x2="12" y2="4.6" />
+                  <line x1="12" y1="19.4" x2="12" y2="21.8" />
+                  <line x1="2.2" y1="12" x2="4.6" y2="12" />
+                  <line x1="19.4" y1="12" x2="21.8" y2="12" />
+                  <line x1="5.07" y1="5.07" x2="6.77" y2="6.77" />
+                  <line x1="17.23" y1="17.23" x2="18.93" y2="18.93" />
+                  <line x1="5.07" y1="18.93" x2="6.77" y2="17.23" />
+                  <line x1="17.23" y1="6.77" x2="18.93" y2="5.07" />
+                </g>
+              </svg>
+            </span>
+            <span class="toggle-slot slot-moon" aria-hidden="true">
+              <svg class="theme-icon icon-moon" viewBox="0 0 24 24" width="13" height="13">
+                <path
+                  d="M20.3 14.8A8.3 8.3 0 0 1 9.2 3.7a.55.55 0 0 0-.72-.68A8.9 8.9 0 1 0 20.98 15.52a.55.55 0 0 0-.68-.72Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Horizontal Body -->
+      <main class="main-body">
+        <!-- Left Action Column -->
+        <div class="action-col">
+          <button
+            id="startBtn"
+            class="pill-btn primary-pill"
+            type="button"
+          >
+            Start Speed Test
+          </button>
+        </div>
+
+        <div class="col-divider" aria-hidden="true"></div>
+
+        <!-- Right Telemetry & Export Column -->
+        <div class="metrics-col">
+          <!-- State 1 (Ready): Download -- Mbps / Upload -- Mbps over single neutral bar -->
+          <div id="readyMetrics" class="ready-metrics">
+            <div class="ready-labels">
+              <span id="readyDownloadLabel">Download -- Mbps</span>
+              <span id="readyUploadLabel">Upload -- Mbps</span>
+            </div>
+            <div class="progress-track ready-track" aria-hidden="true"></div>
+          </div>
+
+          <!-- States 2 & 3 (Testing & Complete): Inline values + blue/green progress bars -->
+          <div id="activeMetrics" class="active-metrics" hidden>
+            <div class="metric-inline-row">
+              <span id="downloadValue" class="metric-value" title="Download Speed">0.0 Mbps</span>
+              <div class="progress-track" aria-hidden="true">
+                <div id="downloadBar" class="progress-fill download-fill"></div>
+              </div>
+            </div>
+
+            <div class="metric-inline-row">
+              <span id="uploadValue" class="metric-value" title="Upload Speed">-- Mbps</span>
+              <div class="progress-track" aria-hidden="true">
+                <div id="uploadBar" class="progress-fill upload-fill"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="export-row" id="exportRow" hidden>
+            <button
+              id="exportPdfBtn"
+              class="pill-btn export-pill"
+              type="button"
+            >
+              Export PDF Report
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

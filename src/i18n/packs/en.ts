@@ -47,6 +47,14 @@ export const enPack: TranslationPack = {
         'internet speed guide, mbps vs mbs, ping vs jitter, ipv4 vs ipv6, cgnat, ip scams, ip address spoofing, ip geolocation accuracy, vpn ip detection, datacenter ip',
       breadcrumbLabel: 'Blog',
     },
+    'chrome-extension': {
+      title: 'Testline Speed Test Chrome Extension (Manifest V3) | TestLine',
+      description:
+        'Preview and download the Testline Speed Test Chrome Extension (Manifest V3): a 500×170 3D horizontal popup with live Cloudflare download/upload tests, Light/Dark toggle, and native PDF export.',
+      keywords:
+        'testline chrome extension, speed test chrome extension, manifest v3 speed test, download upload speed extension, pdf speed report extension',
+      breadcrumbLabel: 'Chrome Extension',
+    },
     about: {
       title: 'About TestLine — Speed Test & IP Diagnostics Tool',
       description:

@@ -37,6 +37,7 @@ function buildSsrShell(mainMarkup: string): string {
       <a href="/">TestLine</a>
       <a href="/news">News</a>
       <a href="/blog">Blog</a>
+      <a href="/chrome-extension">Chrome Extension</a>
       <a href="/about">About</a>
       <a href="/contact">Contact</a>
       <a href="/privacy-policy">Privacy Policy</a>
@@ -240,6 +241,24 @@ export function buildSsrRootMarkup(
         <p>${escapeHtml(enPack.blog.subtitle)}</p>
         ${listHtml}
       </section>
+    `);
+  }
+
+  if (page === 'chrome-extension') {
+    return buildSsrShell(`
+      <article>
+        <h1>Testline Speed Test — Chrome Extension (Manifest V3)</h1>
+        <p>Compact 500×170 horizontal 3D speed test popup built with plain HTML, CSS, and vanilla JavaScript under strict Manifest V3 Content Security Policy. Test live download and upload speed against Cloudflare Speed endpoints (with automatic offline fallback), switch Dark/Light themes with a 3D Sun/Moon toggle, and export a native PDF report without external CDN scripts.</p>
+        <section>
+          <h2>Download &amp; Load Unpacked in Chrome</h2>
+          <p><a href="/downloads/testline-speed-test-extension.zip">Download Testline Speed Test Chrome Extension (.zip)</a> · <a href="/chrome-extension/popup.html">Open Standalone 500×170 Popup Preview</a></p>
+          <ol>
+            <li>Download and unzip testline-speed-test-extension.zip.</li>
+            <li>Open chrome://extensions/ in Google Chrome and enable Developer mode.</li>
+            <li>Click Load unpacked and select the extracted folder containing manifest.json.</li>
+          </ol>
+        </section>
+      </article>
     `);
   }
 
@@ -519,7 +538,7 @@ export function renderRouteHtmlSnapshot(options: {
     }).replace(/</g, '\\u003c');
     articleLdScript = `<script id="testline-article-ld" type="application/ld+json">${articleLd}</script>`;
   } else if (effectivePage !== 'not-found') {
-    const seo = enPack.seo[effectivePage];
+    const seo = enPack.seo[effectivePage] ?? enPack.seo.home;
     title = seo.title;
     description = seo.description;
     keywords = seo.keywords;

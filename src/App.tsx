@@ -42,6 +42,9 @@ const FaqAndAeoSection = lazy(() =>
 const LegalAndInfoPages = lazy(() =>
   import('./components/LegalAndInfoPages').then((m) => ({ default: m.LegalAndInfoPages }))
 );
+const ChromeExtensionPage = lazy(() =>
+  import('./components/ChromeExtensionPage').then((m) => ({ default: m.ChromeExtensionPage }))
+);
 
 const HISTORY_STORAGE_KEY = 'testline_history_v1';
 const THEME_STORAGE_KEY = 'testline_theme';
@@ -451,6 +454,42 @@ export default function App() {
   const isRunning =
     metrics.phase === 'ping' || metrics.phase === 'download' || metrics.phase === 'upload';
 
+  // Global keyboard shortcut: press 'S' anywhere (outside text inputs) to immediately start a speed test
+  useEffect(() => {
+    const onGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      if (e.key !== 's' && e.key !== 'S') return;
+      if (showDuplicatePdfModal || isRunning) return;
+      if (showOfflineGame && !isOnline) return;
+
+      const target = e.target as HTMLElement | null;
+      const activeEl = document.activeElement as HTMLElement | null;
+      const isEditable = (el: HTMLElement | null) => {
+        if (!el) return false;
+        const tag = el.tagName;
+        return (
+          tag === 'INPUT' ||
+          tag === 'TEXTAREA' ||
+          tag === 'SELECT' ||
+          el.isContentEditable
+        );
+      };
+      if (isEditable(target) || isEditable(activeEl)) return;
+
+      e.preventDefault();
+      if (activePage !== 'home') {
+        navigateTo('home');
+      }
+      if (showOfflineGame && isOnline) {
+        setShowOfflineGame(false);
+      }
+      void startTest();
+    };
+
+    window.addEventListener('keydown', onGlobalKeyDown);
+    return () => window.removeEventListener('keydown', onGlobalKeyDown);
+  }, [activePage, isOnline, isRunning, navigateTo, showDuplicatePdfModal, showOfflineGame, startTest]);
+
   return (
     <div className="min-h-screen flex flex-col overflow-x-clip bg-slate-50 text-slate-900 dark:bg-[#070B12] dark:text-slate-100">
       <TopBar
@@ -654,6 +693,10 @@ export default function App() {
               onSelectPost={selectBlogPost}
               onRunSpeedTest={navigateHome}
             />
+          </Suspense>
+        ) : activePage === 'chrome-extension' ? (
+          <Suspense fallback={<DeferredPanelSkeleton minHeightClass="min-h-[420px]" />}>
+            <ChromeExtensionPage onBackHome={navigateHome} />
           </Suspense>
         ) : (
           <Suspense fallback={<DeferredPanelSkeleton minHeightClass="min-h-[420px]" />}>

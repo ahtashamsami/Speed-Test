@@ -2,6 +2,7 @@ const STATIC_KNOWN_PATHS = new Set([
   '/',
   '/news',
   '/blog',
+  '/chrome-extension',
   '/about',
   '/privacy-policy',
   '/contact',
@@ -65,15 +66,17 @@ export async function onRequest(context) {
 
   const isAssetOrSystemPath =
     normalizedPath.startsWith('/assets/') ||
+    normalizedPath.startsWith('/chrome-extension/') ||
+    normalizedPath.startsWith('/downloads/') ||
     normalizedPath.startsWith('/.well-known/') ||
     normalizedPath.startsWith('/cdn-cgi/') ||
     (/\.[a-z0-9]+$/i.test(normalizedPath) && !normalizedPath.endsWith('.html'));
 
   if (isAssetOrSystemPath) {
     const response = await context.next();
-    // Guard against SPA fallback returning index.html for unknown .json/.xml/.txt files
+    // Guard against SPA fallback returning index.html for unknown static asset files
     if (
-      /\.(?:json|webmanifest|xml|txt|png|jpe?g|svg|webp|ico|js|css|woff2?)$/i.test(normalizedPath) &&
+      /\.(?:json|webmanifest|xml|txt|zip|png|jpe?g|svg|webp|ico|js|css|woff2?)$/i.test(normalizedPath) &&
       response.headers.get('content-type')?.includes('text/html')
     ) {
       return renderNotFoundResponse(context, url);
