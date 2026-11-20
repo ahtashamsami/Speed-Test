@@ -492,3 +492,265 @@ export async function exportNetworkReportPdf({
   const copySuffix = isSecondCopy ? '-second-copy' : '';
   doc.save(`testline-report${copySuffix}-${stamp}.pdf`);
 }
+
+export interface BlogPdfInput {
+  slug: string;
+  title: string;
+  category: string;
+  topicTag?: string;
+  publishedDate: string;
+  readTime: string;
+  author: string;
+  summary: string;
+  keyTakeaways: string[];
+  sections: Array<{
+    heading: string;
+    paragraphs: string[];
+  }>;
+  sourceName?: string;
+  sourceUrl?: string;
+  keyTakeawaysHeading?: string;
+  t?: TranslationPack;
+}
+
+function sanitizePdfText(text: string): string {
+  return text
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/\u2026/g, '...')
+    .replace(/\u00A0/g, ' ');
+}
+
+export async function exportBlogArticlePdf({
+  slug,
+  title,
+  category,
+  topicTag,
+  publishedDate,
+  readTime,
+  author,
+  summary,
+  keyTakeaways,
+  sections,
+  sourceName,
+  sourceUrl,
+  keyTakeawaysHeading,
+  t = enPack,
+}: BlogPdfInput): Promise<void> {
+  const logoAsset = await loadTrimmedLogoDataUrl(BRAND_LOGO_PATH, true);
+
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const marginX = 16;
+  const contentWidth = pageWidth - marginX * 2;
+  let cursorY = 16;
+
+  const drawCenterWatermark = () => {
+    if (!logoAsset?.watermarkDataUrl) return;
+    const wmWidth = 118;
+    const wmHeight = wmWidth / logoAsset.aspectRatio;
+    const wmX = (pageWidth - wmWidth) / 2;
+    const wmY = (pageHeight - wmHeight) / 2;
+    doc.addImage(logoAsset.watermarkDataUrl, 'PNG', wmX, wmY, wmWidth, wmHeight);
+  };
+
+  drawCenterWatermark();
+
+  const ensureSpace = (neededMm: number) => {
+    if (cursorY + neededMm > pageHeight - 20) {
+      doc.addPage();
+      drawCenterWatermark();
+      cursorY = 18;
+    }
+  };
+
+  // Top Header Bar with TestLine Site Logo on the Right
+  let headerBottomY = cursorY;
+  let headerTextWidth = contentWidth;
+  if (logoAsset) {
+    const logoH = 16;
+    const logoW = Math.min(logoH * logoAsset.aspectRatio, 44);
+    const logoX = pageWidth - marginX - logoW;
+    const logoY = cursorY - 3;
+
+    doc.addImage(logoAsset.dataUrl, 'PNG', logoX, logoY, logoW, logoH);
+    headerBottomY = logoY + logoH + 3;
+    headerTextWidth = contentWidth - logoW - 8;
+  }
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(2, 132, 199);
+  const categoryLine = sanitizePdfText(
+    topicTag ? `${category}  ·  ${topicTag}` : category
+  ).toUpperCase();
+  doc.text(categoryLine, marginX, cursorY + 1);
+  cursorY += 5.5;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(100, 116, 139);
+  const metaText = sanitizePdfText(
+    `${publishedDate}  ·  ${readTime}  ·  ${author}`
+  );
+  const metaLines = doc.splitTextToSize(metaText, headerTextWidth);
+  doc.text(metaLines, marginX, cursorY);
+  cursorY += metaLines.length * 4.2 + 1;
+
+  cursorY = Math.max(cursorY, headerBottomY);
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.35);
+  doc.line(marginX, cursorY, pageWidth - marginX, cursorY);
+  cursorY += 9;
+
+  // Article Title
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.setTextColor(15, 23, 42);
+  const titleLines = doc.splitTextToSize(sanitizePdfText(title), contentWidth);
+  doc.text(titleLines, marginX, cursorY);
+  cursorY += titleLines.length * 7.2 + 3;
+
+  // Lead Summary
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10.5);
+  doc.setTextColor(71, 85, 105);
+  const summaryLines = doc.splitTextToSize(sanitizePdfText(summary), contentWidth);
+  doc.text(summaryLines, marginX, cursorY);
+  cursorY += summaryLines.length * 5.2 + 6;
+
+  // Key Takeaways Callout Box
+  if (keyTakeaways.length > 0) {
+    const wrappedTakeaways = keyTakeaways.map((item) =>
+      doc.splitTextToSize(`•  ${sanitizePdfText(item)}`, contentWidth - 10)
+    );
+    const totalTakeawayLines = wrappedTakeaways.reduce((acc, lines) => acc + lines.length, 0);
+    const boxHeight = 11 + totalTakeawayLines * 4.7 + (keyTakeaways.length - 1) * 1.6 + 3;
+
+    ensureSpace(Math.min(boxHeight, 60));
+
+    // Only draw bounding box if it fits on the current page
+    const drawBox = cursorY + boxHeight <= pageHeight - 20;
+    const boxTopY = cursorY;
+    if (drawBox) {
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(203, 213, 225);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(marginX, boxTopY, contentWidth, boxHeight, 2.5, 2.5, 'FD');
+    }
+
+    cursorY += 6.5;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text(sanitizePdfText(keyTakeawaysHeading || t.blog.keyTakeaways), marginX + 5, cursorY);
+    cursorY += 5.5;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(51, 65, 85);
+    for (const lines of wrappedTakeaways) {
+      ensureSpace(lines.length * 4.7 + 2);
+      doc.text(lines, marginX + 5, cursorY);
+      cursorY += lines.length * 4.7 + 1.6;
+    }
+
+    cursorY = drawBox ? boxTopY + boxHeight + 8 : cursorY + 6;
+  }
+
+  // Article Sections
+  for (const section of sections) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12.5);
+    doc.setTextColor(15, 23, 42);
+    const headingLines = doc.splitTextToSize(sanitizePdfText(section.heading), contentWidth);
+
+    // Prevent orphaned heading at page bottom
+    ensureSpace(headingLines.length * 5.6 + 16);
+    doc.text(headingLines, marginX, cursorY);
+    cursorY += headingLines.length * 5.6 + 2.5;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(51, 65, 85);
+
+    for (const paragraph of section.paragraphs) {
+      const pLines = doc.splitTextToSize(sanitizePdfText(paragraph), contentWidth);
+      const lineHeight = 5.1;
+
+      if (cursorY + pLines.length * lineHeight > pageHeight - 20) {
+        for (const line of pLines) {
+          ensureSpace(lineHeight + 2);
+          doc.text(line, marginX, cursorY);
+          cursorY += lineHeight;
+        }
+      } else {
+        doc.text(pLines, marginX, cursorY);
+        cursorY += pLines.length * lineHeight;
+      }
+      cursorY += 3.2;
+    }
+
+    cursorY += 3.5;
+  }
+
+  // Optional Source Attribution
+  if (sourceUrl) {
+    ensureSpace(14);
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.25);
+    doc.line(marginX, cursorY, pageWidth - marginX, cursorY);
+    cursorY += 5.5;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text(
+      sanitizePdfText(`Original Source: ${sourceName || 'External Reference'}`),
+      marginX,
+      cursorY
+    );
+    cursorY += 4.2;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(2, 132, 199);
+    const urlLines = doc.splitTextToSize(sourceUrl, contentWidth);
+    doc.text(urlLines, marginX, cursorY);
+  }
+
+  // Footer on Every Page
+  const pText = t.pdf;
+  const pageCount = doc.getNumberOfPages();
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p);
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.25);
+    doc.line(marginX, pageHeight - 14.5, pageWidth - marginX, pageHeight - 14.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    const pageLabel = pText.pageOf
+      .replace('{p}', String(p))
+      .replace('{total}', String(pageCount));
+    doc.text('TestLine · ECORZO LLC  ·  https://testline.net', marginX, pageHeight - 9.5);
+    doc.text(pageLabel, pageWidth - marginX, pageHeight - 9.5, { align: 'right' });
+  }
+
+  const safeSlug =
+    slug
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 64) || 'article';
+  doc.save(`testline-blog-${safeSlug}.pdf`);
+}
+

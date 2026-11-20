@@ -162,16 +162,6 @@ export const Footer = memo(function Footer({ activePage, onNavigate }: FooterPro
           <span>
             &copy; {new Date().getFullYear()} {t.footer.copyrightSuffix}
           </span>
-          <span
-            aria-label="Keyboard shortcut: press S to start speed test"
-            className="inline-flex items-center gap-1.5 text-slate-500 dark:text-slate-400"
-          >
-            <span>Shortcut: Press</span>
-            <kbd className="inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 font-mono text-[11px] font-semibold rounded border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
-              S
-            </kbd>
-            <span>to start speed test</span>
-          </span>
           <span>{t.footer.poweredBy}</span>
         </div>
       </div>

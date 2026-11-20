@@ -2,7 +2,6 @@ import {
   ACESFilmicToneMapping,
   BoxGeometry,
   CapsuleGeometry,
-  Clock,
   Color,
   CylinderGeometry,
   DirectionalLight,
@@ -22,6 +21,7 @@ import {
   Quaternion,
   Scene,
   SRGBColorSpace,
+  Timer,
   TorusGeometry,
   Vector3,
   WebGLRenderer,
@@ -315,7 +315,10 @@ export function createPopupLineScene(
   let lastTheme = state.theme;
   let disposed = false;
   let frameId = 0;
-  const clock = new Clock();
+  const timer = new Timer();
+  if (typeof document !== 'undefined') {
+    timer.connect(document);
+  }
 
   function applyTheme(dark: boolean) {
     railMat.color.setHex(dark ? 0x1e293b : 0xdbe2ec);
@@ -563,12 +566,11 @@ export function createPopupLineScene(
 
   function tick() {
     if (disposed) return;
+    timer.update();
     if (!contextLost && !document.hidden) {
-      const dt = Math.min(0.05, Math.max(0.001, clock.getDelta()));
+      const dt = Math.min(0.05, Math.max(0.001, timer.getDelta()));
       update(dt);
       renderer.render(scene, camera);
-    } else {
-      clock.getDelta();
     }
     if (prefersReducedMotion) return;
     if (isSoftwareGl) {
@@ -614,6 +616,7 @@ export function createPopupLineScene(
       disposed = true;
       window.cancelAnimationFrame(frameId);
       window.clearTimeout(frameId);
+      timer.dispose();
       canvas.removeEventListener('webglcontextlost', onContextLost);
       canvas.removeEventListener('webglcontextrestored', onContextRestored);
       baseRailGeo.dispose();

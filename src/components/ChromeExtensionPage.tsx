@@ -52,7 +52,7 @@ export const ChromeExtensionPage = memo(function ChromeExtensionPage({
   };
 
   return (
-    <article className="max-w-4xl mx-auto space-y-8">
+    <article className="w-full space-y-7">
       {/* Page Header */}
       <header className="space-y-4">
         <button

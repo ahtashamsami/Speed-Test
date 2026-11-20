@@ -1,5 +1,15 @@
-import { ArrowLeft, ArrowRight, BookOpen, ExternalLink, Flame, Search } from 'lucide-react';
-import { memo, useMemo, useState } from 'react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  FileDown,
+  Flame,
+  Search,
+} from 'lucide-react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   BLOG_CATEGORIES,
   type BlogCategory,
@@ -8,6 +18,25 @@ import {
 import { EXTRA_UI_STRINGS } from '../i18n/extraStrings';
 import { useI18n } from '../i18n/LanguageContext';
 import { formatDateLong } from '../utils/formatters';
+
+const ARTICLES_PER_PAGE = 10;
+
+function getPaginationRange(current: number, total: number): Array<number | 'ellipsis'> {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const pages: Array<number | 'ellipsis'> = [1];
+  const left = Math.max(2, current - 1);
+  const right = Math.min(total - 1, current + 1);
+
+  if (left > 2) pages.push('ellipsis');
+  for (let p = left; p <= right; p += 1) {
+    pages.push(p);
+  }
+  if (right < total - 1) pages.push('ellipsis');
+  pages.push(total);
+  return pages;
+}
 
 interface BlogPageProps {
   posts: BlogPost[];
@@ -32,6 +61,41 @@ export const BlogPage = memo(function BlogPage({
   const { t, lang } = useI18n();
   const [selectedCategory, setSelectedCategory] = useState<'All' | BlogCategory>('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [downloadingSlug, setDownloadingSlug] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory, searchQuery]);
+
+  const handleDownloadPdf = useCallback(
+    async (post: ResolvedBlogPost) => {
+      if (downloadingSlug) return;
+      setDownloadingSlug(post.slug);
+      try {
+        const { exportBlogArticlePdf } = await import('../utils/pdfReport');
+        await exportBlogArticlePdf({
+          slug: post.slug,
+          title: post.title,
+          category: post.displayCategory,
+          topicTag: post.topicTag,
+          publishedDate: post.displayDate,
+          readTime: post.readTime,
+          author: post.author,
+          summary: post.summary,
+          keyTakeaways: post.keyTakeaways,
+          sections: post.sections,
+          sourceName: post.sourceName,
+          sourceUrl: post.sourceUrl,
+          keyTakeawaysHeading: t.blog.keyTakeaways,
+          t,
+        });
+      } finally {
+        setDownloadingSlug(null);
+      }
+    },
+    [downloadingSlug, t]
+  );
 
   const localizedPosts = useMemo<ResolvedBlogPost[]>(() => {
     return posts.map((post) => {
@@ -119,6 +183,28 @@ export const BlogPage = memo(function BlogPage({
       );
     });
   }, [localizedPosts, selectedCategory, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredPosts.length / ARTICLES_PER_PAGE));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIdx = (safePage - 1) * ARTICLES_PER_PAGE;
+  const endIdx = Math.min(filteredPosts.length, startIdx + ARTICLES_PER_PAGE);
+
+  const paginatedPosts = useMemo(
+    () => filteredPosts.slice(startIdx, startIdx + ARTICLES_PER_PAGE),
+    [filteredPosts, startIdx]
+  );
+
+  const pageNumbers = useMemo(
+    () => getPaginationRange(safePage, totalPages),
+    [safePage, totalPages]
+  );
+
+  const goToPage = (page: number) => {
+    const next = Math.min(Math.max(1, page), totalPages);
+    if (next === safePage) return;
+    setCurrentPage(next);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const activePostIndex = useMemo(
     () =>
@@ -210,6 +296,19 @@ export const BlogPage = memo(function BlogPage({
                 <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
               </a>
             )}
+            <button
+              type="button"
+              onClick={() => {
+                void handleDownloadPdf(activePost);
+              }}
+              disabled={downloadingSlug === activePost.slug}
+              className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 py-2 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-55 disabled:cursor-not-allowed transition-colors whitespace-nowrap cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+            >
+              <FileDown className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" aria-hidden="true" />
+              <span>
+                {downloadingSlug === activePost.slug ? 'Downloading PDF...' : 'Download PDF'}
+              </span>
+            </button>
             <button
               type="button"
               onClick={onRunSpeedTest}
@@ -409,79 +508,163 @@ export const BlogPage = memo(function BlogPage({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {filteredPosts.map((post, idx) => {
-            const isNew = highlightedIds.has(post.id);
-            return (
-              <article
-                key={post.id}
-                className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] p-6 flex flex-col justify-between gap-4 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
-              >
-                <div className="space-y-2.5">
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                    {isNew && (
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wide bg-rose-600 text-white">
-                        {t.blog.newTag}
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {paginatedPosts.map((post, idx) => {
+              const isNew = highlightedIds.has(post.id);
+              const absoluteIndex = startIdx + idx + 1;
+              return (
+                <article
+                  key={post.id}
+                  className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] p-6 flex flex-col justify-between gap-4 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                      {isNew && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wide bg-rose-600 text-white">
+                          {t.blog.newTag}
+                        </span>
+                      )}
+                      {post.isDailyHotNews && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold uppercase tracking-wide bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300">
+                          <Flame className="w-3 h-3" aria-hidden="true" />
+                          <span>{t.blog.dailyHotNewsBadge}</span>
+                        </span>
+                      )}
+                      <span className="font-mono text-slate-400 dark:text-slate-500">
+                        {String(absoluteIndex).padStart(2, '0')}
                       </span>
-                    )}
-                    {post.isDailyHotNews && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold uppercase tracking-wide bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300">
-                        <Flame className="w-3 h-3" aria-hidden="true" />
-                        <span>{t.blog.dailyHotNewsBadge}</span>
+                      <span aria-hidden="true">·</span>
+                      <span className="font-semibold text-sky-700 dark:text-sky-400">
+                        {post.topicTag
+                          ? `${post.displayCategory} · ${post.topicTag}`
+                          : post.displayCategory}
                       </span>
-                    )}
-                    <span className="font-mono text-slate-400 dark:text-slate-500">
-                      {String(idx + 1).padStart(2, '0')}
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    <span className="font-semibold text-sky-700 dark:text-sky-400">
-                      {post.topicTag
-                        ? `${post.displayCategory} · ${post.topicTag}`
-                        : post.displayCategory}
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    <span>{post.readTime}</span>
-                    <span aria-hidden="true">·</span>
-                    <span>{post.displayDate}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{post.readTime}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{post.displayDate}</span>
+                    </div>
+
+                    <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100 leading-snug">
+                      <a
+                        href={`/blog/${encodeURIComponent(post.slug)}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          openPost(post.slug);
+                        }}
+                        className="text-left hover:text-sky-700 dark:hover:text-sky-400 transition-colors cursor-pointer focus-visible:outline-none focus-visible:underline"
+                      >
+                        {post.title}
+                      </a>
+                    </h2>
+
+                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                      {post.summary}
+                    </p>
                   </div>
 
-                  <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100 leading-snug">
-                    <a
-                      href={`/blog/${encodeURIComponent(post.slug)}`}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        openPost(post.slug);
-                      }}
-                      className="text-left hover:text-sky-700 dark:hover:text-sky-400 transition-colors cursor-pointer focus-visible:outline-none focus-visible:underline"
-                    >
-                      {post.title}
-                    </a>
-                  </h2>
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-3">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                      {post.author}
+                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleDownloadPdf(post);
+                        }}
+                        disabled={downloadingSlug === post.slug}
+                        aria-label={`Download "${post.title}" as PDF`}
+                        title="Download blog article as PDF"
+                        className="inline-flex items-center gap-1.5 min-h-[38px] px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                      >
+                        <FileDown
+                          className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400"
+                          aria-hidden="true"
+                        />
+                        <span>{downloadingSlug === post.slug ? '...' : 'PDF'}</span>
+                      </button>
+                      <a
+                        href={`/blog/${encodeURIComponent(post.slug)}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          openPost(post.slug);
+                        }}
+                        className="inline-flex items-center gap-1.5 min-h-[38px] px-3 py-1.5 text-xs font-semibold rounded-lg text-sky-700 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                      >
+                        <span>{t.blog.readArticle}</span>
+                        <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+                      </a>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
 
-                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                    {post.summary}
-                  </p>
+          {totalPages > 1 && (
+            <nav
+              aria-label="Blog pagination"
+              className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2"
+            >
+              <p className="text-xs font-mono text-slate-500 dark:text-slate-400">
+                Showing {startIdx + 1}–{endIdx} of {filteredPosts.length}
+              </p>
+
+              <div className="inline-flex items-center gap-1.5 p-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A]">
+                <button
+                  type="button"
+                  onClick={() => goToPage(safePage - 1)}
+                  disabled={safePage === 1}
+                  aria-label="Previous page"
+                  className="inline-flex items-center gap-1 min-h-[38px] px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Previous</span>
+                </button>
+
+                <div className="flex items-center gap-1">
+                  {pageNumbers.map((item, i) =>
+                    item === 'ellipsis' ? (
+                      <span
+                        key={`ellipsis-${i}`}
+                        aria-hidden="true"
+                        className="px-2 text-xs text-slate-400 dark:text-slate-500 select-none"
+                      >
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => goToPage(item)}
+                        aria-current={item === safePage ? 'page' : undefined}
+                        className={`min-w-[38px] min-h-[38px] px-2.5 py-1.5 text-xs font-mono font-medium rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
+                          item === safePage
+                            ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-semibold'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    )
+                  )}
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-3">
-                  <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                    {post.author}
-                  </span>
-                  <a
-                    href={`/blog/${encodeURIComponent(post.slug)}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      openPost(post.slug);
-                    }}
-                    className="inline-flex items-center gap-1.5 min-h-[38px] px-3 py-1.5 text-xs font-semibold rounded-lg text-sky-700 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-                  >
-                    <span>{t.blog.readArticle}</span>
-                    <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-                  </a>
-                </div>
-              </article>
-            );
-          })}
+                <button
+                  type="button"
+                  onClick={() => goToPage(safePage + 1)}
+                  disabled={safePage === totalPages}
+                  aria-label="Next page"
+                  className="inline-flex items-center gap-1 min-h-[38px] px-3 py-1.5 text-xs font-medium rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
+                </button>
+              </div>
+            </nav>
+          )}
         </div>
       )}
     </section>

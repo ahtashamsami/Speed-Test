@@ -1421,24 +1421,6 @@
     exportPdfReport();
   });
 
-  // Global keyboard shortcut: press 'S' to immediately trigger Start Speed Test
-  document.addEventListener('keydown', function (e) {
-    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
-    if (e.key !== 's' && e.key !== 'S') return;
-    var target = e.target;
-    if (
-      target &&
-      (target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.tagName === 'SELECT' ||
-        target.isContentEditable)
-    ) {
-      return;
-    }
-    e.preventDefault();
-    runSpeedTest();
-  });
-
   /* ---------------------------------------------------------
      Initialize 3D Download & Upload Speed Test Line
      --------------------------------------------------------- */
