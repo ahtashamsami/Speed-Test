@@ -166,9 +166,10 @@ body[data-theme="dark"] {
    POPUP SHELL (Locked 500x170px, Consistent 16px Rounded Corners)
    ========================================================= */
 .popup-shell {
+  position: relative;
   width: 500px;
   height: 170px;
-  padding: 12px 22px 14px;
+  padding: 12px 20px 14px;
   border-radius: var(--radius-shell);
   display: flex;
   flex-direction: column;
@@ -183,6 +184,8 @@ body[data-theme="dark"] {
    TOP BAR (Dynamic Light/Dark TestLine Site Logo + Pill Toggle)
    ========================================================= */
 .top-bar {
+  position: relative;
+  z-index: 1;
   height: 38px;
   flex-shrink: 0;
   display: flex;
@@ -242,8 +245,55 @@ body[data-theme="dark"] .logo-dark {
 .top-controls {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
+}
+
+/* Compact 3D Line Animation Style Switcher */
+.mode-toggle {
+  appearance: none;
+  border: none;
+  margin: 0;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: var(--radius-component);
+  background: var(--toggle-track-bg);
+  box-shadow: var(--toggle-track-shadow);
+  color: var(--value-color);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+  transition: background 160ms var(--ease-ui), color 160ms var(--ease-ui), transform 120ms var(--ease-ui);
+}
+
+.mode-toggle:hover {
+  background: var(--toggle-thumb-bg);
+  box-shadow: var(--toggle-thumb-shadow);
+}
+
+.mode-toggle:active {
+  transform: translateY(1px);
+}
+
+.mode-toggle:focus-visible {
+  box-shadow: var(--toggle-track-shadow), 0 0 0 2px #38bdf8;
+}
+
+.mode-icon {
+  color: #0284c7;
+  flex-shrink: 0;
+}
+
+body[data-theme="dark"] .mode-icon {
+  color: #38bdf8;
 }
 
 /* Tactile Rounded 3D Mbps / MB/s Segmented Toggle */
@@ -374,6 +424,8 @@ body[data-theme="dark"] .slot-moon {
    MAIN HORIZONTAL BODY
    ========================================================= */
 .main-body {
+  position: relative;
+  z-index: 1;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -459,13 +511,81 @@ body[data-theme="dark"] .slot-moon {
 .primary-pill {
   width: 152px;
   height: 44px;
-  padding: 0 16px;
+  padding: 0 14px;
+  gap: 8px;
   font-size: 13.5px;
   font-variant-numeric: tabular-nums;
   background: var(--primary-bg);
   border: 1px solid var(--primary-border);
   color: var(--primary-color);
   box-shadow: var(--primary-shadow);
+}
+
+.btn-progress-ring {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.btn-progress-ring[hidden] {
+  display: none;
+}
+
+.btn-ring-svg {
+  display: block;
+  overflow: visible;
+}
+
+.btn-ring-track {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.25;
+  opacity: 0.22;
+}
+
+.btn-ring-spin {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-dasharray: 14 46;
+  opacity: 0.45;
+  transform-origin: 12px 12px;
+  animation: extRingSpin 1.15s linear infinite;
+}
+
+.btn-ring-fill {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 59.69;
+  stroke-dashoffset: 59.69;
+  transform: rotate(-90deg);
+  transform-origin: 12px 12px;
+  transition: stroke-dashoffset 160ms linear, stroke 180ms var(--ease-ui);
+}
+
+.primary-pill[data-subphase="upload"] .btn-ring-fill,
+.primary-pill[data-subphase="upload"] .btn-ring-spin {
+  stroke: #16a34a;
+}
+
+body[data-theme="dark"] .primary-pill[data-subphase="upload"] .btn-ring-fill,
+body[data-theme="dark"] .primary-pill[data-subphase="upload"] .btn-ring-spin {
+  stroke: #4ade80;
+}
+
+@keyframes extRingSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .primary-pill:hover:not(:disabled) {
@@ -525,101 +645,85 @@ body[data-theme="dark"] .slot-moon {
 }
 
 /* =========================================================
-   STATE 1 READY METRICS & STATES 2/3 INLINE SPEED BARS
+   3D DOWNLOAD & UPLOAD SPEED LINE STAGE
    ========================================================= */
-.ready-metrics {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.ready-metrics[hidden] {
-  display: none;
-}
-
 .ready-labels {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  font-size: 13.5px;
-  font-weight: 400;
+  gap: 10px;
+  font-size: 12.5px;
+  font-weight: 500;
   color: var(--muted-label);
   white-space: nowrap;
 }
 
-.active-metrics {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.active-metrics[hidden] {
+.ready-labels[hidden] {
   display: none;
 }
 
-.popup-shell[data-state="complete"] .active-metrics {
-  gap: 8px;
-}
-
-.metric-inline-row {
+.line3d-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
-.metric-value {
-  width: 82px;
+.active-values {
+  width: 78px;
   flex-shrink: 0;
-  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 7px;
+}
+
+.active-values[hidden] {
+  display: none;
+}
+
+.metric-value {
+  font-size: 12.5px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--value-color);
   white-space: nowrap;
   text-align: left;
+  line-height: 1.25;
 }
 
-.progress-track {
+.line3d-frame {
   flex: 1;
   min-width: 0;
-  height: 10px;
-  border-radius: var(--radius-component);
+  height: 44px;
+  border-radius: 12px;
   background: var(--track-bg);
   box-shadow: var(--track-shadow);
   overflow: hidden;
+  position: relative;
 }
 
-.ready-track {
-  flex: none;
+.popup-shell[data-state="complete"] .line3d-frame {
+  height: 42px;
+}
+
+.line3d-canvas {
+  display: block;
   width: 100%;
-  height: 9px;
-}
-
-.progress-fill {
   height: 100%;
-  width: 0%;
-  border-radius: var(--radius-component);
-  transition: width 140ms linear;
-}
-
-.download-fill {
-  background: var(--dl-fill);
-  box-shadow: var(--dl-shadow);
-}
-
-.upload-fill {
-  background: var(--ul-fill);
-  box-shadow: var(--ul-shadow);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .popup-shell,
   .toggle-thumb,
+  .mode-toggle,
   .unit-toggle,
   .unit-btn,
   .pill-btn,
-  .progress-fill {
+  .btn-ring-fill {
     transition: none;
+  }
+  .btn-ring-spin {
+    animation: none;
   }
 }

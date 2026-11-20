@@ -82,10 +82,10 @@ export const FastSpeedStage = memo(function FastSpeedStage({
   const isIdle = metrics.phase === 'idle';
 
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] px-4 py-8 sm:px-10 sm:py-12">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] px-4 py-7 sm:px-10 sm:py-10">
       <div className="max-w-3xl mx-auto text-center">
         {isIdle ? (
-          <div className="py-6 sm:py-9 flex flex-col items-center justify-center">
+          <div className="pt-4 pb-6 sm:pt-6 sm:pb-7 flex flex-col items-center justify-center">
             <button
               type="button"
               onClick={onStartTest}
@@ -184,15 +184,72 @@ export const FastSpeedStage = memo(function FastSpeedStage({
                 </div>
 
                 {isRunning ? (
-                  <button
-                    type="button"
-                    onClick={onStopTest}
-                    aria-label={t.speedStage.stopAria}
-                    title={t.speedStage.stopAria}
-                    className="min-w-[44px] min-h-[44px] w-11 h-11 rounded-full border-2 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-900 dark:hover:border-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-                  >
-                    <Square className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
-                  </button>
+                  <div className="relative inline-flex items-center justify-center w-14 h-14">
+                    {/* Track + Determinate Live Progress Arc */}
+                    <svg
+                      viewBox="0 0 60 60"
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 w-full h-full -rotate-90"
+                    >
+                      <circle
+                        cx="30"
+                        cy="30"
+                        r="26.5"
+                        fill="none"
+                        strokeWidth="3"
+                        className="stroke-slate-200 dark:stroke-slate-700/80"
+                      />
+                      <circle
+                        cx="30"
+                        cy="30"
+                        r="26.5"
+                        fill="none"
+                        strokeWidth="3.25"
+                        strokeLinecap="round"
+                        strokeDasharray={166.5}
+                        strokeDashoffset={
+                          166.5 * (1 - Math.max(0, Math.min(100, metrics.progressPct)) / 100)
+                        }
+                        className={`transition-[stroke-dashoffset,stroke] duration-200 ease-out ${
+                          metrics.phase === 'upload'
+                            ? 'stroke-teal-600 dark:stroke-teal-400'
+                            : 'stroke-sky-600 dark:stroke-sky-400'
+                        }`}
+                      />
+                    </svg>
+
+                    {/* Continuous Spinning Orbital Sweep Indicator */}
+                    <svg
+                      viewBox="0 0 60 60"
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 w-full h-full animate-spin [animation-duration:1.35s] motion-reduce:animate-none"
+                    >
+                      <circle
+                        cx="30"
+                        cy="30"
+                        r="26.5"
+                        fill="none"
+                        strokeWidth="3.25"
+                        strokeLinecap="round"
+                        strokeDasharray="34 132.5"
+                        className={
+                          metrics.phase === 'upload'
+                            ? 'stroke-teal-500/45 dark:stroke-teal-300/50'
+                            : 'stroke-sky-500/45 dark:stroke-sky-300/50'
+                        }
+                      />
+                    </svg>
+
+                    <button
+                      type="button"
+                      onClick={onStopTest}
+                      aria-label={`${t.speedStage.stopAria} (${statusText}, ${metrics.progressPct}%)`}
+                      title={t.speedStage.stopAria}
+                      className="relative z-10 min-w-[44px] min-h-[44px] w-11 h-11 rounded-full border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-[#0F172A]/95 text-slate-700 dark:text-slate-200 hover:border-slate-900 dark:hover:border-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                    >
+                      <Square className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
+                    </button>
+                  </div>
                 ) : (
                   <button
                     type="button"
@@ -237,8 +294,8 @@ export const FastSpeedStage = memo(function FastSpeedStage({
               </div>
             </div>
 
-            {/* Minimal Phase Status & Progress Track */}
-            <div className="mt-7 max-w-md mx-auto">
+            {/* Phase Status Readout */}
+            <div className="mt-6 max-w-2xl mx-auto">
               <div className="flex items-center justify-between gap-3 text-xs font-medium text-slate-600 dark:text-slate-400">
                 <span className="inline-flex items-center gap-1.5">
                   {metrics.phase === 'error' ? (
@@ -256,26 +313,24 @@ export const FastSpeedStage = memo(function FastSpeedStage({
                   <span>{statusText}</span>
                 </span>
 
-                <span className="font-mono">{metrics.progressPct}%</span>
+                <span className="font-mono tabular-nums">{metrics.progressPct}%</span>
               </div>
 
-              <div className="mt-2 h-1 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+              <div className="mt-2.5 h-1.5 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                 <div
-                  style={{ width: `${metrics.progressPct}%` }}
-                  className={`h-full transition-all duration-150 ease-out ${
+                  className={`h-full rounded-full transition-all duration-300 ${
                     metrics.phase === 'error'
                       ? 'bg-amber-500'
-                      : metrics.phase === 'upload'
-                      ? 'bg-teal-600 dark:bg-teal-400'
-                      : metrics.phase === 'complete'
+                      : metrics.phase === 'complete' || metrics.phase === 'upload'
                       ? 'bg-teal-600 dark:bg-teal-400'
                       : 'bg-sky-600 dark:bg-sky-400'
                   }`}
+                  style={{ width: `${Math.max(0, Math.min(100, metrics.progressPct))}%` }}
                 />
               </div>
 
               {metrics.phase === 'error' && metrics.errorMessage && (
-                <div className="mt-3.5 flex flex-wrap items-center justify-center gap-2.5 text-xs">
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-2.5 text-xs">
                   <span className="text-amber-700 dark:text-amber-400">{metrics.errorMessage}</span>
                   <button
                     type="button"
@@ -289,7 +344,7 @@ export const FastSpeedStage = memo(function FastSpeedStage({
             </div>
 
             {/* Fast.com-style Secondary Telemetry Strip (Upload, Ping, Jitter) */}
-            <div className="mt-9 pt-7 border-t border-slate-100 dark:border-slate-800/90 grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-slate-800 text-left sm:text-center">
+            <div className="mt-7 pt-7 border-t border-slate-100 dark:border-slate-800/90 grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 dark:divide-slate-800 text-left sm:text-center">
               <div className="py-3 sm:py-0 sm:px-6">
                 <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
                   {t.speedStage.uploadSpeed}

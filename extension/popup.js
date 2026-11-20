@@ -3,23 +3,37 @@
 
   var THEME_KEY = 'testline_ext_theme';
   var UNIT_KEY = 'testline_ext_unit';
+  var LINE_MODE_KEY = 'testline_ext_line_mode';
+  var LINE_MODES = ['fiber', 'wave', 'helix', 'blocks'];
+  var LINE_MODE_LABELS = {
+    fiber: 'Fiber',
+    wave: 'Wave',
+    helix: 'Helix',
+    blocks: 'Blocks'
+  };
   var DOWNLOAD_ENDPOINT = 'https://speed.cloudflare.com/__down';
   var UPLOAD_ENDPOINT = 'https://speed.cloudflare.com/__up';
   var DOH_ENDPOINT = 'https://cloudflare-dns.com/dns-query?name=cloudflare.com&type=A';
 
   var shell = document.getElementById('popupShell');
+  var lineModeBtn = document.getElementById('lineModeBtn');
+  var lineModeLabel = document.getElementById('lineModeLabel');
   var themeToggle = document.getElementById('themeToggle');
   var unitMbpsBtn = document.getElementById('unitMbpsBtn');
   var unitMBsBtn = document.getElementById('unitMBsBtn');
   var startBtn = document.getElementById('startBtn');
+  var startBtnLabel = document.getElementById('startBtnLabel');
+  var btnProgressRing = document.getElementById('btnProgressRing');
+  var btnRingFill = document.getElementById('btnRingFill');
+  var RING_CIRCUMFERENCE = 59.69;
   var readyMetrics = document.getElementById('readyMetrics');
   var readyDownloadLabel = document.getElementById('readyDownloadLabel');
   var readyUploadLabel = document.getElementById('readyUploadLabel');
-  var activeMetrics = document.getElementById('activeMetrics');
+  var activeValues = document.getElementById('activeValues');
   var downloadValueEl = document.getElementById('downloadValue');
   var uploadValueEl = document.getElementById('uploadValue');
-  var downloadBarEl = document.getElementById('downloadBar');
-  var uploadBarEl = document.getElementById('uploadBar');
+  var line3dFrame = document.getElementById('line3dFrame');
+  var line3dCanvas = document.getElementById('line3dCanvas');
   var exportRow = document.getElementById('exportRow');
   var exportPdfBtn = document.getElementById('exportPdfBtn');
 
@@ -27,10 +41,13 @@
     phase: 'ready', // 'ready' | 'testing' | 'complete'
     theme: 'light',
     unit: 'Mbps', // 'Mbps' | 'MB/s'
+    lineMode: 'fiber', // 'fiber' | 'wave' | 'helix' | 'blocks'
     downloadMbps: null,
     uploadMbps: null,
     liveDownloadMbps: null,
     liveUploadMbps: null,
+    downloadRatio: 0,
+    uploadRatio: 0,
     pingMs: null,
     usedFallback: false,
     completedAt: null,
@@ -49,6 +66,23 @@
   };
 
   var cachedPdfLogos = null;
+  var sceneController = null;
+  var lineResizeObserver = null;
+
+  function syncScene3D(partial) {
+    if (sceneController && typeof sceneController.updateState === 'function') {
+      sceneController.updateState(partial);
+    }
+  }
+
+  function resizeLine3D() {
+    if (!sceneController || typeof sceneController.resize !== 'function' || !line3dFrame) {
+      return;
+    }
+    var w = Math.max(80, Math.round(line3dFrame.clientWidth || 265));
+    var h = Math.max(32, Math.round(line3dFrame.clientHeight || 44));
+    sceneController.resize(w, h);
+  }
 
   /* ---------------------------------------------------------
      Theme Persistence (chrome.storage.local + preview fallback)
@@ -62,6 +96,7 @@
       'title',
       safeTheme === 'dark' ? 'Switch to Light theme' : 'Switch to Dark theme'
     );
+    syncScene3D({ theme: safeTheme });
   }
 
   function loadSavedTheme() {
@@ -252,8 +287,118 @@
   }
 
   /* ---------------------------------------------------------
+     3D Speed Line Animation Mode Persistence (4 Options)
+     --------------------------------------------------------- */
+  function isValidLineMode(mode) {
+    return LINE_MODES.indexOf(mode) !== -1;
+  }
+
+  function applyLineMode(mode) {
+    var safeMode = isValidLineMode(mode) ? mode : 'fiber';
+    state.lineMode = safeMode;
+    var label = LINE_MODE_LABELS[safeMode] || 'Fiber';
+    if (lineModeLabel) {
+      lineModeLabel.textContent = label;
+    }
+    if (lineModeBtn) {
+      lineModeBtn.setAttribute('data-mode', safeMode);
+      lineModeBtn.setAttribute(
+        'title',
+        '3D speed line: ' + label + ' (click to switch between Fiber, Wave, Helix, Blocks)'
+      );
+    }
+    syncScene3D({ mode: safeMode });
+  }
+
+  function loadSavedLineMode() {
+    if (
+      typeof chrome !== 'undefined' &&
+      chrome.storage &&
+      chrome.storage.local &&
+      typeof chrome.storage.local.get === 'function'
+    ) {
+      try {
+        chrome.storage.local.get([LINE_MODE_KEY], function (result) {
+          if (chrome.runtime && chrome.runtime.lastError) {
+            applyLineMode('fiber');
+            return;
+          }
+          if (result && isValidLineMode(result[LINE_MODE_KEY])) {
+            applyLineMode(result[LINE_MODE_KEY]);
+          } else {
+            applyLineMode('fiber');
+          }
+        });
+        return;
+      } catch (_err) {
+        // Fall through to localStorage fallback
+      }
+    }
+
+    try {
+      var saved = window.localStorage.getItem(LINE_MODE_KEY);
+      applyLineMode(isValidLineMode(saved) ? saved : 'fiber');
+    } catch (_err) {
+      applyLineMode('fiber');
+    }
+  }
+
+  function saveLineMode(mode) {
+    if (
+      typeof chrome !== 'undefined' &&
+      chrome.storage &&
+      chrome.storage.local &&
+      typeof chrome.storage.local.set === 'function'
+    ) {
+      try {
+        var payload = {};
+        payload[LINE_MODE_KEY] = mode;
+        chrome.storage.local.set(payload);
+        return;
+      } catch (_err) {
+        // Fall through to localStorage fallback
+      }
+    }
+
+    try {
+      window.localStorage.setItem(LINE_MODE_KEY, mode);
+    } catch (_err) {
+      // Ignore storage restrictions
+    }
+  }
+
+  if (lineModeBtn) {
+    lineModeBtn.addEventListener('click', function () {
+      var idx = LINE_MODES.indexOf(state.lineMode);
+      var nextMode = LINE_MODES[(idx + 1) % LINE_MODES.length];
+      applyLineMode(nextMode);
+      saveLineMode(nextMode);
+    });
+  }
+
+  /* ---------------------------------------------------------
      UI State Helpers
      --------------------------------------------------------- */
+  function setStartBtnText(text) {
+    if (startBtnLabel) {
+      startBtnLabel.textContent = text;
+    } else {
+      startBtn.textContent = text;
+    }
+  }
+
+  function setRingProgress(pct, subPhase) {
+    if (btnRingFill) {
+      var clamped = Math.max(0, Math.min(100, pct));
+      btnRingFill.style.strokeDashoffset = (RING_CIRCUMFERENCE * (1 - clamped / 100)).toFixed(2);
+    }
+    if (subPhase) {
+      startBtn.setAttribute('data-subphase', subPhase);
+    } else if (subPhase === '') {
+      startBtn.removeAttribute('data-subphase');
+    }
+  }
+
   function setPhase(phase) {
     state.phase = phase;
     shell.setAttribute('data-state', phase);
@@ -262,49 +407,82 @@
       startBtn.hidden = false;
       startBtn.disabled = false;
       startBtn.classList.remove('is-testing');
-      startBtn.textContent = 'Start Speed Test';
+      if (btnProgressRing) btnProgressRing.hidden = true;
+      setRingProgress(0, '');
+      setStartBtnText('Start Speed Test');
       readyMetrics.hidden = false;
-      activeMetrics.hidden = true;
+      if (activeValues) activeValues.hidden = true;
       exportRow.hidden = true;
-      downloadBarEl.style.width = '0%';
-      uploadBarEl.style.width = '0%';
+      state.downloadRatio = 0;
+      state.uploadRatio = 0;
       refreshSpeedReadouts();
+      syncScene3D({
+        phase: 'ready',
+        subPhase: 'idle',
+        downloadRatio: 0,
+        uploadRatio: 0,
+        downloadMbps: 0,
+        uploadMbps: 0
+      });
     } else if (phase === 'testing') {
       startBtn.hidden = false;
       startBtn.disabled = true;
       startBtn.classList.add('is-testing');
-      startBtn.textContent = 'Testing 0%';
+      if (btnProgressRing) btnProgressRing.hidden = false;
+      setRingProgress(0, 'download');
+      setStartBtnText('Testing 0%');
       readyMetrics.hidden = true;
-      activeMetrics.hidden = false;
+      if (activeValues) activeValues.hidden = false;
       exportRow.hidden = true;
-      downloadBarEl.style.width = '0%';
-      uploadBarEl.style.width = '0%';
+      state.downloadRatio = 0;
+      state.uploadRatio = 0;
       refreshSpeedReadouts();
+      syncScene3D({
+        phase: 'testing',
+        subPhase: 'download',
+        downloadRatio: 0,
+        uploadRatio: 0,
+        downloadMbps: 0,
+        uploadMbps: 0
+      });
     } else if (phase === 'complete') {
       startBtn.hidden = false;
       startBtn.disabled = false;
       startBtn.classList.remove('is-testing');
-      startBtn.textContent = 'Start Speed Test';
+      if (btnProgressRing) btnProgressRing.hidden = true;
+      setRingProgress(100, '');
+      setStartBtnText('Start Speed Test');
       readyMetrics.hidden = true;
-      activeMetrics.hidden = false;
+      if (activeValues) activeValues.hidden = false;
       exportRow.hidden = false;
-      downloadBarEl.style.width = '100%';
-      uploadBarEl.style.width = '100%';
+      state.downloadRatio = 1;
+      state.uploadRatio = 1;
       refreshSpeedReadouts();
+      syncScene3D({
+        phase: 'complete',
+        subPhase: 'complete',
+        downloadRatio: 1,
+        uploadRatio: 1,
+        downloadMbps: state.downloadMbps || 0,
+        uploadMbps: state.uploadMbps || 0
+      });
     }
+
+    window.requestAnimationFrame(resizeLine3D);
   }
 
   function setOverallProgress(pct) {
     var clamped = Math.max(0, Math.min(100, Math.round(pct)));
     if (state.phase === 'testing') {
-      startBtn.textContent = 'Testing ' + clamped + '%';
+      setStartBtnText('Testing ' + clamped + '%');
+      setRingProgress(clamped, clamped >= 50 ? 'upload' : 'download');
     }
   }
 
-  function speedToBarPercent(mbps, phaseRatio) {
-    var ratioFill = Math.max(4, Math.min(100, phaseRatio * 100));
-    var speedBonus = Math.min(18, Math.log10(Math.max(1, mbps) + 1) * 8);
-    return Math.min(100, Math.max(ratioFill, Math.min(96, ratioFill * 0.88 + speedBonus)));
+  function speedToLineRatio(mbps, phaseRatio) {
+    var ratioFill = Math.max(0.05, Math.min(1, phaseRatio));
+    var speedBonus = Math.min(0.16, Math.log10(Math.max(1, mbps) + 1) * 0.075);
+    return Math.min(1, Math.max(ratioFill, Math.min(0.96, ratioFill * 0.88 + speedBonus)));
   }
 
   /* ---------------------------------------------------------
@@ -543,8 +721,13 @@
             var currentMbps = (loadedBytes * 8) / (elapsedSec * 1e6);
             var ratio = Math.min(1, loadedBytes / targetBytes);
             state.liveDownloadMbps = currentMbps;
+            state.downloadRatio = speedToLineRatio(currentMbps, ratio);
             downloadValueEl.textContent = formatSpeed(currentMbps);
-            downloadBarEl.style.width = speedToBarPercent(currentMbps, ratio).toFixed(1) + '%';
+            syncScene3D({
+              subPhase: 'download',
+              downloadRatio: state.downloadRatio,
+              downloadMbps: currentMbps
+            });
             setOverallProgress(Math.round(ratio * 50));
           }
         }
@@ -560,8 +743,13 @@
       }
 
       state.liveDownloadMbps = finalMbps;
+      state.downloadRatio = 1;
       downloadValueEl.textContent = formatSpeed(finalMbps);
-      downloadBarEl.style.width = '100%';
+      syncScene3D({
+        subPhase: 'download',
+        downloadRatio: 1,
+        downloadMbps: finalMbps
+      });
       setOverallProgress(50);
       return finalMbps;
     } finally {
@@ -618,8 +806,14 @@
         var ratio = Math.min(1, sent / total);
 
         state.liveUploadMbps = currentMbps;
+        state.uploadRatio = speedToLineRatio(currentMbps, ratio);
         uploadValueEl.textContent = formatSpeed(currentMbps);
-        uploadBarEl.style.width = speedToBarPercent(currentMbps, ratio).toFixed(1) + '%';
+        syncScene3D({
+          subPhase: 'upload',
+          downloadRatio: 1,
+          uploadRatio: state.uploadRatio,
+          uploadMbps: currentMbps
+        });
         setOverallProgress(50 + Math.round(ratio * 49));
       };
 
@@ -631,8 +825,14 @@
           var totalSec = Math.max(0.05, (performance.now() - startTime) / 1000);
           var finalMbps = (payloadBytes * 8) / (totalSec * 1e6);
           state.liveUploadMbps = finalMbps;
+          state.uploadRatio = 1;
           uploadValueEl.textContent = formatSpeed(finalMbps);
-          uploadBarEl.style.width = '100%';
+          syncScene3D({
+            subPhase: 'upload',
+            downloadRatio: 1,
+            uploadRatio: 1,
+            uploadMbps: finalMbps
+          });
           setOverallProgress(100);
           resolve(finalMbps);
         } else {
@@ -684,13 +884,24 @@
 
       if (isDownload) {
         state.liveDownloadMbps = sample;
+        state.downloadRatio = Math.min(1, ratio);
         downloadValueEl.textContent = formatSpeed(sample);
-        downloadBarEl.style.width = Math.min(100, ratio * 100).toFixed(1) + '%';
+        syncScene3D({
+          subPhase: 'download',
+          downloadRatio: state.downloadRatio,
+          downloadMbps: sample
+        });
         setOverallProgress(Math.round(ratio * 50));
       } else {
         state.liveUploadMbps = sample;
+        state.uploadRatio = Math.min(1, ratio);
         uploadValueEl.textContent = formatSpeed(sample);
-        uploadBarEl.style.width = Math.min(100, ratio * 100).toFixed(1) + '%';
+        syncScene3D({
+          subPhase: 'upload',
+          downloadRatio: 1,
+          uploadRatio: state.uploadRatio,
+          uploadMbps: sample
+        });
         setOverallProgress(50 + Math.round(ratio * 50));
       }
       await wait(65);
@@ -1229,9 +1440,48 @@
   });
 
   /* ---------------------------------------------------------
-     Initialize
+     Initialize 3D Download & Upload Speed Test Line
      --------------------------------------------------------- */
+  if (
+    line3dCanvas &&
+    typeof window !== 'undefined' &&
+    window.TestlinePopupScene &&
+    typeof window.TestlinePopupScene.createPopupLineScene === 'function'
+  ) {
+    try {
+      sceneController = window.TestlinePopupScene.createPopupLineScene(line3dCanvas, {
+        mode: state.lineMode,
+        phase: 'ready',
+        subPhase: 'idle',
+        theme: state.theme,
+        downloadRatio: 0,
+        uploadRatio: 0,
+        downloadMbps: 0,
+        uploadMbps: 0
+      });
+      if (typeof ResizeObserver === 'function' && line3dFrame) {
+        lineResizeObserver = new ResizeObserver(function () {
+          resizeLine3D();
+        });
+        lineResizeObserver.observe(line3dFrame);
+      }
+      window.requestAnimationFrame(resizeLine3D);
+    } catch (_err) {
+      sceneController = null;
+    }
+  }
+
+  window.addEventListener('unload', function () {
+    if (lineResizeObserver && typeof lineResizeObserver.disconnect === 'function') {
+      lineResizeObserver.disconnect();
+    }
+    if (sceneController && typeof sceneController.dispose === 'function') {
+      sceneController.dispose();
+    }
+  });
+
   loadSavedTheme();
   loadSavedUnit();
+  loadSavedLineMode();
   setPhase('ready');
 })();

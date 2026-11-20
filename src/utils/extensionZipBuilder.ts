@@ -178,6 +178,11 @@ const EXTENSION_SOURCE_FILES: Array<{
     kind: 'text',
   },
   {
+    url: '/chrome-extension/popup-scene3d.js',
+    archivePath: 'popup-scene3d.js',
+    kind: 'text',
+  },
+  {
     url: '/chrome-extension/icons/icon16.png',
     archivePath: 'icons/icon16.png',
     kind: 'png',
